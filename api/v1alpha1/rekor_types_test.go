@@ -246,6 +246,11 @@ var _ = Describe("Rekor", func() {
 								Address: "trillian-system.default.svc",
 								Port:    &port,
 							},
+							TLSCertificate: TLSCert{
+								CACertRef: &LocalObjectReference{
+									Name: "ca-configmap",
+								},
+							},
 						},
 					}
 
