@@ -169,18 +169,6 @@ var _ = Describe("Trillian", func() {
 									},
 								},
 							},
-							TrillianSigner: TrillianSigner{
-								TLSCertificate: TLSCert{
-									CertRef: &SecretKeySelector{
-										Key:                  "cert",
-										LocalObjectReference: LocalObjectReference{Name: "signer-secret"},
-									},
-									PrivateKeyRef: &SecretKeySelector{
-										Key:                  "key",
-										LocalObjectReference: LocalObjectReference{Name: "signer-secret"},
-									},
-								},
-							},
 						},
 					}
 

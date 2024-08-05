@@ -66,19 +66,6 @@ func (i createServiceAction) Handle(ctx context.Context, instance *rhtasv1alpha1
 		return i.FailedWithStatusUpdate(ctx, fmt.Errorf("could not create logsigner Service: %w", err), instance)
 	}
 
-	//TLS: Annotate service
-	signingKeySecret, _ := k8sutils.GetSecret(i.Client, "openshift-service-ca", "signing-key")
-	if signingKeySecret != nil && instance.Spec.TrillianSigner.TLSCertificate.CertRef == nil {
-		if logsignerService.Annotations == nil {
-			logsignerService.Annotations = make(map[string]string)
-		}
-		logsignerService.Annotations["service.beta.openshift.io/serving-cert-secret-name"] = "log-signer-" + instance.Name + "-tls-secret"
-		err := i.Client.Update(ctx, logsignerService)
-		if err != nil {
-			return i.FailedWithStatusUpdate(ctx, fmt.Errorf("could not annotate logserver service: %w", err), instance)
-		}
-	}
-
 	if updated {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 			Type:    actions.ServerCondition,

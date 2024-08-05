@@ -3,6 +3,7 @@ package logserver
 import (
 	"context"
 	"fmt"
+
 	"github.com/securesign/operator/internal/controller/common/utils"
 
 	"github.com/securesign/operator/internal/controller/common/action"
@@ -115,7 +116,7 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Trilli
 				Name: "tls-cert",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: "log-server-" + instance.Name + "-tls-secret",
+						SecretName: instance.Name + "-trillian-log-server-tls-secret",
 					},
 				},
 			})
