@@ -9,7 +9,6 @@ import (
 	k8sutils "github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
 	"github.com/securesign/operator/internal/controller/fulcio/actions"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -30,7 +29,7 @@ func (g handleFulcioCert) Name() string {
 
 func (g handleFulcioCert) CanHandle(ctx context.Context, instance *v1alpha1.CTlog) bool {
 	c := meta.FindStatusCondition(instance.GetConditions(), constants.Ready)
-	if c.Reason != constants.Creating && c.Reason != constants.Ready {
+	if c.Reason != constants.Pending && c.Reason != constants.Ready {
 		return false
 	}
 
@@ -57,13 +56,18 @@ func (g handleFulcioCert) CanHandle(ctx context.Context, instance *v1alpha1.CTlo
 
 func (g handleFulcioCert) Handle(ctx context.Context, instance *v1alpha1.CTlog) *action.Result {
 
-	if meta.FindStatusCondition(instance.Status.Conditions, constants.Ready).Reason != constants.Creating {
+	if meta.FindStatusCondition(instance.Status.Conditions, constants.Ready).Reason != constants.Pending {
+		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+			Type:    CertCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  constants.Pending,
+			Message: "discovering root certificates",
+		})
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 			Type:   constants.Ready,
 			Status: metav1.ConditionFalse,
-			Reason: constants.Creating,
-		},
-		)
+			Reason: constants.Pending,
+		})
 		return g.StatusUpdate(ctx, instance)
 	}
 
@@ -96,25 +100,16 @@ func (g handleFulcioCert) Handle(ctx context.Context, instance *v1alpha1.CTlog) 
 	}
 
 	// invalidate server config
-	if instance.Status.ServerConfigRef != nil {
-		if err := g.Client.Delete(ctx, &v1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.Status.ServerConfigRef.Name,
-				Namespace: instance.Namespace,
-			},
-		}); err != nil {
-			if !k8sErrors.IsNotFound(err) {
-				return g.Failed(err)
-			}
-		}
-		instance.Status.ServerConfigRef = nil
-	}
-
+	meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		Type:    ServerConfigCondition,
+		Status:  metav1.ConditionFalse,
+		Reason:  constants.Pending,
+		Message: "root certificates changed",
+	})
 	meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:   CertCondition,
 		Status: metav1.ConditionTrue,
-		Reason: "Resolved",
-	},
-	)
+		Reason: constants.Ready,
+	})
 	return g.StatusUpdate(ctx, instance)
 }

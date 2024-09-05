@@ -24,64 +24,112 @@ import (
 func TestResolveTree_CanHandle(t *testing.T) {
 	tests := []struct {
 		name         string
-		phase        string
+		status       []metav1.Condition
 		canHandle    bool
 		treeID       *int64
 		statusTreeID *int64
 	}{
 		{
-			name:      "spec.treeID is not nil and status.treeID is nil",
-			phase:     constants.Creating,
+			name: "spec.treeID is not nil and status.treeID is nil",
+			status: []metav1.Condition{
+				{
+					Type:   TreeCondition,
+					Status: metav1.ConditionTrue,
+					Reason: constants.Ready,
+				},
+			},
 			canHandle: true,
 			treeID:    ptr.To(int64(123456)),
 		},
 		{
-			name:         "spec.treeID != status.treeID",
-			phase:        constants.Creating,
+			name: "spec.treeID != status.treeID",
+			status: []metav1.Condition{
+				{
+					Type:   TreeCondition,
+					Status: metav1.ConditionTrue,
+					Reason: constants.Ready,
+				},
+			},
 			canHandle:    true,
 			treeID:       ptr.To(int64(123456)),
 			statusTreeID: ptr.To(int64(654321)),
 		},
 		{
-			name:         "spec.treeID is nil and status.treeID is not nil",
-			phase:        constants.Creating,
+			name: "spec.treeID is nil and status.treeID is not nil",
+			status: []metav1.Condition{
+				{
+					Type:   TreeCondition,
+					Status: metav1.ConditionTrue,
+					Reason: constants.Ready,
+				},
+			},
 			canHandle:    false,
 			statusTreeID: ptr.To(int64(654321)),
 		},
 		{
-			name:      "spec.treeID is nil and status.treeID is nil",
-			phase:     constants.Creating,
+			name: "status.treeID is not nil and TreeCondition is false",
+			status: []metav1.Condition{
+				{
+					Type:   TreeCondition,
+					Status: metav1.ConditionFalse,
+					Reason: constants.Ready,
+				},
+			},
+			canHandle:    true,
+			statusTreeID: ptr.To(int64(654321)),
+		},
+		{
+			name: "spec.treeID is nil and status.treeID is nil",
+			status: []metav1.Condition{
+				{
+					Type:   TreeCondition,
+					Status: metav1.ConditionTrue,
+					Reason: constants.Ready,
+				},
+			},
 			canHandle: true,
 		},
 		{
-			name:      "no phase condition",
-			phase:     "",
-			canHandle: false,
+			name:         "no phase condition",
+			status:       []metav1.Condition{},
+			canHandle:    true,
+			statusTreeID: ptr.To(int64(654321)),
 		},
 		{
-			name:      constants.Ready,
-			phase:     constants.Ready,
-			canHandle: true,
+			name: "ConditionFalse",
+			status: []metav1.Condition{
+				{
+					Type:   TreeCondition,
+					Status: metav1.ConditionFalse,
+					Reason: constants.Pending,
+				},
+			},
+			statusTreeID: ptr.To(int64(654321)),
+			canHandle:    true,
 		},
 		{
-			name:      constants.Pending,
-			phase:     constants.Pending,
-			canHandle: false,
+			name: "ConditionUnknown",
+			status: []metav1.Condition{
+				{
+					Type:   TreeCondition,
+					Status: metav1.ConditionUnknown,
+					Reason: constants.Pending,
+				},
+			},
+			statusTreeID: ptr.To(int64(654321)),
+			canHandle:    true,
 		},
 		{
-			name:      constants.Creating,
-			phase:     constants.Creating,
-			canHandle: true,
-		},
-		{
-			name:      constants.Initialize,
-			phase:     constants.Initialize,
-			canHandle: false,
-		},
-		{
-			name:      constants.Failure,
-			phase:     constants.Failure,
-			canHandle: false,
+			name: "ConditionTrue",
+			status: []metav1.Condition{
+				{
+					Type:   TreeCondition,
+					Status: metav1.ConditionTrue,
+					Reason: constants.Pending,
+				},
+			},
+			statusTreeID: ptr.To(int64(654321)),
+			canHandle:    false,
 		},
 	}
 	for _, tt := range tests {
@@ -96,11 +144,9 @@ func TestResolveTree_CanHandle(t *testing.T) {
 					TreeID: tt.statusTreeID,
 				},
 			}
-			if tt.phase != "" {
-				meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-					Type:   constants.Ready,
-					Reason: tt.phase,
-				})
+
+			for _, status := range tt.status {
+				meta.SetStatusCondition(&instance.Status.Conditions, status)
 			}
 
 			if got := a.CanHandle(context.TODO(), &instance); !reflect.DeepEqual(got, tt.canHandle) {
@@ -142,6 +188,9 @@ func TestResolveTree_Handle(t *testing.T) {
 					g.Expect(ctlog.Status.TreeID).ShouldNot(BeNil())
 					g.Expect(ctlog.Status.TreeID).To(HaveValue(BeNumerically(">", 0)))
 					g.Expect(ctlog.Status.TreeID).To(HaveValue(BeNumerically("==", 5555555)))
+
+					g.Expect(meta.IsStatusConditionTrue(ctlog.Status.Conditions, ServerConfigCondition)).Should(BeFalse())
+					g.Expect(meta.IsStatusConditionTrue(ctlog.Status.Conditions, TreeCondition)).Should(BeTrue())
 				},
 			},
 		},
@@ -161,6 +210,9 @@ func TestResolveTree_Handle(t *testing.T) {
 					g.Expect(ctlog.Status.TreeID).ShouldNot(BeNil())
 					g.Expect(ctlog.Spec.TreeID).To(HaveValue(BeNumerically(">", 0)))
 					g.Expect(ctlog.Spec.TreeID).To(HaveValue(BeNumerically("==", *ctlog.Status.TreeID)))
+
+					g.Expect(meta.IsStatusConditionTrue(ctlog.Status.Conditions, ServerConfigCondition)).Should(BeFalse())
+					g.Expect(meta.IsStatusConditionTrue(ctlog.Status.Conditions, TreeCondition)).Should(BeTrue())
 				},
 			},
 		},
@@ -180,6 +232,9 @@ func TestResolveTree_Handle(t *testing.T) {
 					g.Expect(ctlog.Spec.TreeID).To(HaveValue(BeNumerically(">", 0)))
 					g.Expect(ctlog.Spec.TreeID).To(HaveValue(BeNumerically("==", *ctlog.Status.TreeID)))
 					g.Expect(ctlog.Status.TreeID).To(HaveValue(BeNumerically("==", 123456)))
+
+					g.Expect(meta.IsStatusConditionTrue(ctlog.Status.Conditions, ServerConfigCondition)).Should(BeFalse())
+					g.Expect(meta.IsStatusConditionTrue(ctlog.Status.Conditions, TreeCondition)).Should(BeTrue())
 				},
 			},
 		},
@@ -197,6 +252,9 @@ func TestResolveTree_Handle(t *testing.T) {
 				verify: func(g Gomega, ctlog *rhtasv1alpha1.CTlog) {
 					g.Expect(ctlog.Spec.TreeID).Should(BeNil())
 					g.Expect(ctlog.Status.TreeID).Should(BeNil())
+
+					g.Expect(meta.FindStatusCondition(ctlog.Status.Conditions, ServerConfigCondition)).Should(BeNil())
+					g.Expect(meta.IsStatusConditionTrue(ctlog.Status.Conditions, TreeCondition)).Should(BeFalse())
 				},
 			},
 		},
@@ -254,7 +312,12 @@ func TestResolveTree_Handle(t *testing.T) {
 					Conditions: []metav1.Condition{
 						{
 							Type:   constants.Ready,
-							Reason: constants.Creating,
+							Reason: constants.Pending,
+						},
+						{
+							Type:   TreeCondition,
+							Status: metav1.ConditionFalse,
+							Reason: constants.Pending,
 						},
 					},
 				},

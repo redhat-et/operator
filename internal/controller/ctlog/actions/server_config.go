@@ -12,10 +12,13 @@ import (
 	trillian "github.com/securesign/operator/internal/controller/trillian/actions"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
+
+const ConfigSecretNameFormat = "ctlog-config-%s"
 
 func NewServerConfigAction() action.Action[*rhtasv1alpha1.CTlog] {
 	return &serverConfig{}
@@ -30,32 +33,40 @@ func (i serverConfig) Name() string {
 }
 
 func (i serverConfig) CanHandle(_ context.Context, instance *rhtasv1alpha1.CTlog) bool {
-	c := meta.FindStatusCondition(instance.Status.Conditions, constants.Ready)
 
-	switch {
-	case c == nil:
-		return false
-	case c.Reason != constants.Creating && c.Reason != constants.Ready:
-		return false
-	case instance.Status.ServerConfigRef == nil:
+	if instance.Status.ServerConfigRef == nil {
 		return true
-	case instance.Spec.ServerConfigRef != nil:
-		return !equality.Semantic.DeepEqual(instance.Spec.ServerConfigRef, instance.Status.ServerConfigRef)
-	default:
-		return false
 	}
+
+	if instance.Spec.ServerConfigRef != nil {
+		return !equality.Semantic.DeepEqual(instance.Spec.ServerConfigRef, instance.Status.ServerConfigRef)
+	}
+
+	return !meta.IsStatusConditionTrue(instance.Status.Conditions, ServerConfigCondition)
 }
 
 func (i serverConfig) Handle(ctx context.Context, instance *rhtasv1alpha1.CTlog) *action.Result {
+	// Return to pending state due changes in ServerConfigRef
+	if meta.IsStatusConditionTrue(instance.Status.Conditions, ServerConfigCondition) {
+		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+			Type:    ServerConfigCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  constants.Pending,
+			Message: "resolving server config",
+		})
+		return i.StatusUpdate(ctx, instance)
+	}
+
 	var (
+		cfg *ctlogUtils.Config
 		err error
 	)
 
 	if instance.Spec.ServerConfigRef != nil {
 		instance.Status.ServerConfigRef = instance.Spec.ServerConfigRef
-		i.Recorder.Event(instance, corev1.EventTypeNormal, "CTLogConfigUpdated", "CTLog config updated")
-		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{Type: constants.Ready,
-			Status: metav1.ConditionFalse, Reason: constants.Creating, Message: "CTLog config updated"})
+		i.Recorder.Eventf(instance, corev1.EventTypeNormal, "CTLogConfigUpdated", "CTLog config updated: %s", instance.Status.ServerConfigRef.Name)
+		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{Type: ServerConfigCondition,
+			Status: metav1.ConditionTrue, Reason: constants.Ready, Message: "CTLog config updated"})
 		return i.StatusUpdate(ctx, instance)
 	}
 
@@ -77,31 +88,30 @@ func (i serverConfig) Handle(ctx context.Context, instance *rhtasv1alpha1.CTlog)
 	rootCerts, err := i.handleRootCertificates(instance)
 	if err != nil {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    constants.Ready,
+			Type:    ServerConfigCondition,
 			Status:  metav1.ConditionFalse,
-			Reason:  constants.Creating,
+			Reason:  constants.Pending,
 			Message: fmt.Sprintf("Waiting for Fulcio root certificate: %v", err.Error()),
 		})
 		i.StatusUpdate(ctx, instance)
 		return i.Requeue()
 	}
 
-	certConfig, err := i.handlePrivateKey(instance)
+	signerConfig, err := ctlogUtils.ResolveSignerConfig(i.Client, instance)
 	if err != nil {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    constants.Ready,
+			Type:    ServerConfigCondition,
 			Status:  metav1.ConditionFalse,
-			Reason:  constants.Creating,
+			Reason:  constants.Pending,
 			Message: "Waiting for Ctlog private key secret",
 		})
 		i.StatusUpdate(ctx, instance)
 		return i.Requeue()
 	}
 
-	var cfg map[string][]byte
-	if cfg, err = ctlogUtils.CreateCtlogConfig(fmt.Sprintf("%s:%d", trillianService.Address, *trillianService.Port), *instance.Status.TreeID, rootCerts, certConfig); err != nil {
+	if cfg, err = ctlogUtils.CTlogConfig(fmt.Sprintf("%s:%d", trillianService.Address, *trillianService.Port), *instance.Status.TreeID, rootCerts, signerConfig); err != nil {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    constants.Ready,
+			Type:    ServerConfigCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  constants.Failure,
 			Message: err.Error(),
@@ -109,7 +119,12 @@ func (i serverConfig) Handle(ctx context.Context, instance *rhtasv1alpha1.CTlog)
 		return i.FailedWithStatusUpdate(ctx, fmt.Errorf("could not create CTLog configuration: %w", err), instance)
 	}
 
-	newConfig := utils.CreateImmutableSecret(fmt.Sprintf("ctlog-config-%s", instance.Name), instance.Namespace, cfg, labels)
+	data, err := cfg.Marshal()
+	if err != nil {
+		return i.FailedWithStatusUpdate(ctx, fmt.Errorf("failed to marshal CTLog configuration: %w", err), instance)
+	}
+
+	newConfig := utils.CreateImmutableSecret(fmt.Sprintf(ConfigSecretNameFormat, instance.Name), instance.Namespace, data, labels)
 
 	if err = controllerutil.SetControllerReference(instance, newConfig, i.Client.Scheme()); err != nil {
 		return i.Failed(fmt.Errorf("could not set controller reference for Secret: %w", err))
@@ -118,7 +133,7 @@ func (i serverConfig) Handle(ctx context.Context, instance *rhtasv1alpha1.CTlog)
 	_, err = i.Ensure(ctx, newConfig)
 	if err != nil {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    constants.Ready,
+			Type:    ServerConfigCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  constants.Failure,
 			Message: err.Error(),
@@ -126,36 +141,27 @@ func (i serverConfig) Handle(ctx context.Context, instance *rhtasv1alpha1.CTlog)
 		return i.FailedWithStatusUpdate(ctx, err, instance)
 	}
 
+	// invalidate server config
+	if instance.Status.ServerConfigRef != nil {
+		if err = i.Client.Delete(ctx, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      instance.Status.ServerConfigRef.Name,
+				Namespace: instance.Namespace,
+			},
+		}); err != nil {
+			if !k8sErrors.IsNotFound(err) {
+				return i.Failed(err)
+			}
+		}
+		i.Recorder.Eventf(instance, corev1.EventTypeNormal, "CTLogConfigDeleted", "CTLog config deleted: %s", instance.Status.ServerConfigRef.Name)
+	}
+
 	instance.Status.ServerConfigRef = &rhtasv1alpha1.LocalObjectReference{Name: newConfig.Name}
 
-	i.Recorder.Event(instance, corev1.EventTypeNormal, "CTLogConfigUpdated", "CTLog config updated")
-	meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{Type: constants.Ready,
-		Status: metav1.ConditionFalse, Reason: constants.Creating, Message: "Server config created"})
+	i.Recorder.Eventf(instance, corev1.EventTypeNormal, "CTLogConfigUpdated", "CTLog config updated: %s", newConfig.Name)
+	meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{Type: ServerConfigCondition,
+		Status: metav1.ConditionTrue, Reason: constants.Ready, Message: "CTLog config created"})
 	return i.StatusUpdate(ctx, instance)
-}
-
-func (i serverConfig) handlePrivateKey(instance *rhtasv1alpha1.CTlog) (*ctlogUtils.PrivateKeyConfig, error) {
-	if instance == nil {
-		return nil, nil
-	}
-	private, err := utils.GetSecretData(i.Client, instance.Namespace, instance.Status.PrivateKeyRef)
-	if err != nil {
-		return nil, err
-	}
-	public, err := utils.GetSecretData(i.Client, instance.Namespace, instance.Status.PublicKeyRef)
-	if err != nil {
-		return nil, err
-	}
-	password, err := utils.GetSecretData(i.Client, instance.Namespace, instance.Status.PrivateKeyPasswordRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ctlogUtils.PrivateKeyConfig{
-		PrivateKey:     private,
-		PublicKey:      public,
-		PrivateKeyPass: password,
-	}, nil
 }
 
 func (i serverConfig) handleRootCertificates(instance *rhtasv1alpha1.CTlog) ([]ctlogUtils.RootCertificate, error) {

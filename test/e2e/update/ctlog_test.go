@@ -98,8 +98,8 @@ var _ = Describe("CTlog update", Ordered, func() {
 			Eventually(func(g Gomega) string {
 				ctl := ctlog.Get(ctx, cli, namespace.Name, s.Name)()
 				g.Expect(ctl).NotTo(BeNil())
-				return meta.FindStatusCondition(ctl.Status.Conditions, constants.Ready).Reason
-			}).Should(Equal(constants.Creating))
+				return meta.FindStatusCondition(ctl.Status.Conditions, ctlogAction.ServerConfigCondition).Reason
+			}).Should(Equal(constants.Pending))
 		})
 
 		It("created my-ctlog-secret", func() {

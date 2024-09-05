@@ -8,13 +8,17 @@ const (
 	RBACName           = "ctlog"
 	MonitoringRoleName = "prometheus-k8s-ctlog"
 
-	CertCondition    = "FulcioCertAvailable"
+	SignerCondition       = "SignerAvailable"
+	CertCondition         = "FulcioCertAvailable"
+	ServerConfigCondition = "ServerConfigAvailable"
+	PublicKeyCondition    = "PublicKeyAvailable"
+	TreeCondition         = "TreeAvailable"
+
 	ServerPortName   = "http"
 	ServerPort       = 80
 	ServerTargetPort = 6962
 	MetricsPortName  = "metrics"
 	MetricsPort      = 6963
-	ServerCondition  = "ServerAvailable"
 
 	CTLPubLabel = constants.LabelNamespace + "/ctfe.pub"
 )

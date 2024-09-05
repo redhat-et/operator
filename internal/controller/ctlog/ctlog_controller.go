@@ -89,14 +89,22 @@ func (r *CTlogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	target := instance.DeepCopy()
 	acs := []action.Action[*rhtasv1alpha1.CTlog]{
 		transitions.NewToPendingPhaseAction[*rhtasv1alpha1.CTlog](func(_ *rhtasv1alpha1.CTlog) []string {
-			return []string{actions.CertCondition}
+			return []string{
+				actions.CertCondition,
+				actions.SignerCondition,
+				actions.ServerConfigCondition,
+				actions.PublicKeyCondition,
+				actions.TreeCondition,
+			}
 		}),
-		transitions.NewToCreatePhaseAction[*rhtasv1alpha1.CTlog](),
 
+		actions.NewGenerateSignerAction(),
 		actions.NewHandleFulcioCertAction(),
-		actions.NewHandleKeysAction(),
+		actions.NewResolvePubKeyAction(),
 		actions.NewResolveTreeAction(),
 		actions.NewServerConfigAction(),
+
+		transitions.NewToCreatePhaseAction[*rhtasv1alpha1.CTlog](),
 
 		actions.NewRBACAction(),
 		actions.NewDeployAction(),

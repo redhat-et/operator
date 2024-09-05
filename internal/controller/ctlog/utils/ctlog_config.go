@@ -3,9 +3,6 @@ package utils
 import (
 	"bytes"
 	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 
 	"github.com/google/certificate-transparency-go/trillian/ctfe/configpb"
@@ -46,11 +43,9 @@ var supportedCurves = map[string]elliptic.Curve{
 // technically they are not part of the config, however because we create a
 // secret/CM that we then mount, they need to be synced.
 type Config struct {
-	PrivKey         []byte
-	PrivKeyPassword []byte
-	PubKey          []byte
-	LogID           int64
-	LogPrefix       string
+	Signer    SignerKey
+	LogID     int64
+	LogPrefix string
 
 	// Address of the gRPC Trillian Admin Server (host:port)
 	TrillianServerAddr string
@@ -84,7 +79,7 @@ func (c *Config) AddRootCertificate(root RootCertificate) error {
 // public - CTLog public key, PEM encoded
 // fulcio-%d - For each fulcioCerts, contains one entry so we can support
 // multiple.
-func (c *Config) MarshalConfig() ([]byte, error) {
+func (c *Config) marshalConfig() ([]byte, error) {
 	// Since we can have multiple Fulcio secrets, we need to construct a set
 	// of files containing them for the RootsPemFile. Names don't matter
 	// so we just call them fulcio-%
@@ -95,9 +90,9 @@ func (c *Config) MarshalConfig() ([]byte, error) {
 		rootPems = append(rootPems, fmt.Sprintf("%sfulcio-%d", rootsPemFileDir, i))
 	}
 
-	block, _ := pem.Decode(c.PubKey)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode private key")
+	publicKey, err := c.Signer.PublicKey()
+	if err != nil {
+		return nil, err
 	}
 
 	proto := configpb.LogConfig{
@@ -106,8 +101,8 @@ func (c *Config) MarshalConfig() ([]byte, error) {
 		RootsPemFile: rootPems,
 		PrivateKey: mustMarshalAny(&keyspb.PEMKeyFile{
 			Path:     privateKeyFile,
-			Password: string(c.PrivKeyPassword)}),
-		PublicKey:      &keyspb.PublicKey{Der: block.Bytes},
+			Password: string(c.Signer.PrivateKeyPassword())}),
+		PublicKey:      &keyspb.PublicKey{Der: publicKey},
 		LogBackendName: "trillian",
 		ExtKeyUsages:   []string{"CodeSigning"},
 	}
@@ -130,6 +125,36 @@ func (c *Config) MarshalConfig() ([]byte, error) {
 	return marshalledConfig, nil
 }
 
+func (c *Config) Marshal() (map[string][]byte, error) {
+	config, err := c.marshalConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ctlog config: %v", err)
+	}
+
+	keyPEM, err := c.Signer.PrivateKeyPEM()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal private key: %v", err)
+	}
+
+	pubPEM, err := c.Signer.PublicKeyPEM()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal public key: %v", err)
+	}
+
+	data := map[string][]byte{
+		ConfigKey:  config,
+		PrivateKey: keyPEM,
+		PublicKey:  pubPEM,
+		Password:   c.Signer.PrivateKeyPassword(),
+	}
+	for i, cert := range c.RootCerts {
+		fulcioKey := fmt.Sprintf("fulcio-%d", i)
+		data[fulcioKey] = cert
+	}
+
+	return data, nil
+}
+
 func mustMarshalAny(pb proto.Message) *anypb.Any {
 	ret, err := anypb.New(pb)
 	if err != nil {
@@ -138,65 +163,24 @@ func mustMarshalAny(pb proto.Message) *anypb.Any {
 	return ret
 }
 
-func createConfigWithKeys(certConfig *PrivateKeyConfig) (*Config, error) {
+func CTlogConfig(url string, treeID int64, rootCerts []RootCertificate, signer *SignerKey) (*Config, error) {
 	config := &Config{
-		PubKey: certConfig.PublicKey,
+		Signer:             *signer,
+		LogID:              treeID,
+		LogPrefix:          "trusted-artifact-signer",
+		TrillianServerAddr: url,
 	}
-	if certConfig.PrivateKeyPass != nil {
-		config.PrivKeyPassword = certConfig.PrivateKeyPass
-		config.PrivKey = certConfig.PrivateKey
-	} else {
-		// private key MUST be encrypted by password
-		config.PrivKeyPassword = common.GeneratePassword(8)
-		block, _ := pem.Decode(certConfig.PrivateKey)
-		if block == nil {
-			return nil, fmt.Errorf("failed to decode private key")
-		}
-		// Encrypt the pem
-		encryptedBlock, err := x509.EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, config.PrivKeyPassword, x509.PEMCipherAES256) // nolint
-		if err != nil {
-			return nil, fmt.Errorf("failed to encrypt private key: %w", err)
-		}
 
-		privPEM := pem.EncodeToMemory(encryptedBlock)
-		if privPEM == nil {
-			return nil, fmt.Errorf("failed to encode encrypted private key")
-		}
-		config.PrivKey = privPEM
-
+	// private key MUST be encrypted by password
+	if len(config.Signer.PrivateKeyPassword()) == 0 {
+		config.Signer.password = common.GeneratePassword(20)
 	}
-	return config, nil
-}
-
-func CreateCtlogConfig(trillianUrl string, treeID int64, rootCerts []RootCertificate, keyConfig *PrivateKeyConfig) (map[string][]byte, error) {
-	ctlogConfig, err := createConfigWithKeys(keyConfig)
-	if err != nil {
-		return nil, err
-	}
-	ctlogConfig.LogID = treeID
-	ctlogConfig.LogPrefix = "trusted-artifact-signer"
-	ctlogConfig.TrillianServerAddr = trillianUrl
 
 	for _, cert := range rootCerts {
-		if err = ctlogConfig.AddRootCertificate(cert); err != nil {
-			return nil, fmt.Errorf("Failed to add fulcio root: %v", err)
+		if err := config.AddRootCertificate(cert); err != nil {
+			return nil, fmt.Errorf("failed to add fulcio root: %v", err)
 		}
 	}
 
-	config, err := ctlogConfig.MarshalConfig()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal ctlog config: %v", err)
-	}
-
-	data := map[string][]byte{
-		ConfigKey:  config,
-		PrivateKey: ctlogConfig.PrivKey,
-		PublicKey:  ctlogConfig.PubKey,
-		Password:   ctlogConfig.PrivKeyPassword,
-	}
-	for i, cert := range ctlogConfig.RootCerts {
-		fulcioKey := fmt.Sprintf("fulcio-%d", i)
-		data[fulcioKey] = cert
-	}
-	return data, nil
+	return config, nil
 }

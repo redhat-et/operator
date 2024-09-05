@@ -123,19 +123,20 @@ func DumpNamespace(ctx context.Context, cli client.Client, ns string) {
 	k8s := map[string]logTarget{}
 
 	toDump := map[string]client.ObjectList{
-		"securesign.yaml": &v1alpha1.SecuresignList{},
-		"fulcio.yaml":     &v1alpha1.FulcioList{},
-		"rekor.yaml":      &v1alpha1.RekorList{},
-		"tuf.yaml":        &v1alpha1.TufList{},
-		"ctlog.yaml":      &v1alpha1.CTlogList{},
-		"trillian.yaml":   &v1alpha1.TrillianList{},
-		"tsa.yaml":        &v1alpha1.TimestampAuthorityList{},
-		"pod.yaml":        &v1.PodList{},
-		"configmap.yaml":  &v1.ConfigMapList{},
-		"deployment.yaml": &v12.DeploymentList{},
-		"job.yaml":        &v13.JobList{},
-		"cronjob.yaml":    &v13.CronJobList{},
-		"event.yaml":      &v1.EventList{},
+		"securesign.yaml":  &v1alpha1.SecuresignList{},
+		"fulcio.yaml":      &v1alpha1.FulcioList{},
+		"rekor.yaml":       &v1alpha1.RekorList{},
+		"tuf.yaml":         &v1alpha1.TufList{},
+		"ctlog.yaml":       &v1alpha1.CTlogList{},
+		"trillian.yaml":    &v1alpha1.TrillianList{},
+		"tsa.yaml":         &v1alpha1.TimestampAuthorityList{},
+		"pod.yaml":         &v1.PodList{},
+		"configmap.yaml":   &v1.ConfigMapList{},
+		"deployment.yaml":  &v12.DeploymentList{},
+		"replica_set.yaml": &v12.ReplicaSetList{},
+		"job.yaml":         &v13.JobList{},
+		"cronjob.yaml":     &v13.CronJobList{},
+		"event.yaml":       &v1.EventList{},
 	}
 
 	core.GinkgoWriter.Println("----------------------- Dumping namespace " + ns + " -----------------------")

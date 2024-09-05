@@ -25,7 +25,6 @@ import (
 	"github.com/securesign/operator/internal/controller/constants"
 	"github.com/securesign/operator/internal/controller/ctlog/actions"
 	fulcio "github.com/securesign/operator/internal/controller/fulcio/actions"
-	trillian "github.com/securesign/operator/internal/controller/trillian/actions"
 	k8sTest "github.com/securesign/operator/internal/testing/kubernetes"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -115,14 +114,6 @@ var _ = Describe("CTlog controller", func() {
 				g.Expect(k8sClient.Get(ctx, typeNamespaceName, found)).Should(Succeed())
 				return meta.IsStatusConditionPresentAndEqual(found.Status.Conditions, constants.Ready, metav1.ConditionFalse)
 			}).Should(BeTrue())
-
-			By("Creating trillian service")
-			Expect(k8sClient.Create(ctx, kubernetes.CreateService(Namespace, trillian.LogserverDeploymentName, trillian.ServerPortName, trillian.ServerPort, trillian.ServerPort, constants.LabelsForComponent(trillian.LogServerComponentName, instance.Name)))).To(Succeed())
-			Eventually(func(g Gomega) string {
-				found := &v1alpha1.CTlog{}
-				g.Expect(k8sClient.Get(ctx, typeNamespaceName, found)).Should(Succeed())
-				return meta.FindStatusCondition(found.Status.Conditions, constants.Ready).Reason
-			}).Should(Equal(constants.Creating))
 
 			By("Creating fulcio root cert")
 			Expect(k8sClient.Create(ctx, kubernetes.CreateSecret("test", Namespace,

@@ -12,7 +12,6 @@ import (
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
 	"github.com/securesign/operator/internal/controller/fulcio/actions"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,7 +30,7 @@ func Test_HandleFulcioCert_Autodiscover(t *testing.T) {
 			Conditions: []metav1.Condition{
 				{
 					Type:   constants.Ready,
-					Reason: constants.Creating,
+					Reason: constants.Pending,
 					Status: metav1.ConditionFalse,
 				},
 			},
@@ -74,7 +73,7 @@ func Test_HandleFulcioCert_Empty(t *testing.T) {
 			Conditions: []metav1.Condition{
 				{
 					Type:   constants.Ready,
-					Reason: constants.Creating,
+					Reason: constants.Pending,
 					Status: metav1.ConditionFalse,
 				},
 			},
@@ -122,7 +121,7 @@ func Test_HandleFulcioCert_Configured(t *testing.T) {
 			Conditions: []metav1.Condition{
 				{
 					Type:   constants.Ready,
-					Reason: constants.Creating,
+					Reason: constants.Pending,
 					Status: metav1.ConditionFalse,
 				},
 			},
@@ -173,7 +172,7 @@ func Test_HandleFulcioCert_Configured_Priority(t *testing.T) {
 			Conditions: []metav1.Condition{
 				{
 					Type:   constants.Ready,
-					Reason: constants.Creating,
+					Reason: constants.Pending,
 					Status: metav1.ConditionFalse,
 				},
 			},
@@ -204,7 +203,7 @@ func Test_HandleFulcioCert_Configured_Priority(t *testing.T) {
 	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, CertCondition)).To(BeTrue())
 }
 
-func Test_HandleFulcioCert_Delete_ServerConfig(t *testing.T) {
+func Test_HandleFulcioCert_Invalidate_ServerConfig(t *testing.T) {
 	g := NewWithT(t)
 
 	instance := &v1alpha1.CTlog{
@@ -225,7 +224,7 @@ func Test_HandleFulcioCert_Delete_ServerConfig(t *testing.T) {
 			Conditions: []metav1.Condition{
 				{
 					Type:   constants.Ready,
-					Reason: constants.Creating,
+					Reason: constants.Pending,
 					Status: metav1.ConditionFalse,
 				},
 			},
@@ -247,7 +246,5 @@ func Test_HandleFulcioCert_Delete_ServerConfig(t *testing.T) {
 
 	_ = a.Handle(context.TODO(), i)
 	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, CertCondition)).To(BeTrue())
-
-	g.Expect(i.Status.ServerConfigRef).To(BeNil())
-	g.Expect(c.Get(context.TODO(), types.NamespacedName{Name: "ctlog-config", Namespace: instance.GetNamespace()}, &v1.Secret{})).To(HaveOccurred())
+	g.Expect(meta.IsStatusConditionFalse(i.Status.Conditions, ServerConfigCondition)).To(BeTrue())
 }

@@ -39,6 +39,33 @@ func LabelsRHTAS() map[string]string {
 	}
 }
 
+func AddLabel(ctx context.Context, object *metav1.PartialObjectMetadata, c client.Client, label string, value string) error {
+	object.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Secret",
+	})
+	patch, err := json.Marshal([]map[string]any{
+		{
+			"op":   "add",
+			"path": "/metadata/labels",
+			"value": map[string]string{
+				label: value,
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal patch: %v", err)
+	}
+
+	err = c.Patch(ctx, object, client.RawPatch(types.JSONPatchType, patch))
+	if err != nil {
+		return fmt.Errorf("unable to add '%s' label to object: %w", label, err)
+	}
+
+	return nil
+}
+
 func RemoveLabel(ctx context.Context, object *metav1.PartialObjectMetadata, c client.Client, label string) error {
 	object.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
