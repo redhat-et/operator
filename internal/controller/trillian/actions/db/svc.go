@@ -56,7 +56,7 @@ func (i createServiceAction) Handle(ctx context.Context, instance *rhtasv1alpha1
 		return i.Failed(fmt.Errorf("could not set controller reference for DB service: %w", err))
 	}
 
-	if updated, err = i.Ensure(ctx, mysql); err != nil {
+	if updated, err = i.Ensure(ctx, mysql, action.EnsureSpec(), action.EnsureAnnotations("service.beta.openshift.io/serving-cert-secret-name")); err != nil {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 			Type:    actions.DbCondition,
 			Status:  metav1.ConditionFalse,

@@ -3,11 +3,11 @@ package actions
 import (
 	"context"
 	"fmt"
-
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/action"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
+	"golang.org/x/exp/maps"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,7 +52,9 @@ func (i ingressAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Fulci
 		return i.Failed(fmt.Errorf("could not set controller reference for Ingress: %w", err))
 	}
 
-	if updated, err = i.Ensure(ctx, ingress); err != nil {
+	labelKeys := maps.Keys(instance.Spec.ExternalAccess.RouteSelectorLabels)
+	labelKeys = append(labelKeys, maps.Keys(labels)...)
+	if updated, err = i.Ensure(ctx, ingress, action.EnsureSpec(), action.EnsureLabels(labelKeys...)); err != nil {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 			Type:    constants.Ready,
 			Status:  metav1.ConditionFalse,
