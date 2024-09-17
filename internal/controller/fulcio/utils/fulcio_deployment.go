@@ -29,6 +29,20 @@ func CreateDeployment(instance *v1alpha1.Fulcio, deploymentName string, sa strin
 		return nil, errors.New("CA secret is not specified")
 	}
 
+	var err error
+	switch {
+	case instance.Spec.Ctlog.Address == "":
+		err = fmt.Errorf("CreateDeployment: %w", CtlogAddressNotSpecified)
+	case instance.Spec.Ctlog.Port == nil:
+		err = fmt.Errorf("CreateDeployment: %w", CtlogPortNotSpecified)
+	case instance.Spec.Ctlog.Prefix == "":
+		err = fmt.Errorf("CreateDeployment: %w", CtlogPrefixNotSpecified)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
 	containerPorts := []corev1.ContainerPort{
 		{
 			Protocol:      corev1.ProtocolTCP,
@@ -56,25 +70,8 @@ func CreateDeployment(instance *v1alpha1.Fulcio, deploymentName string, sa strin
 		"/var/run/fulcio-secrets/key.pem",
 		"--fileca-cert",
 		"/var/run/fulcio-secrets/cert.pem",
+		fmt.Sprintf("--ct-log-url=%s:%d/%s", instance.Spec.Ctlog.Address, *instance.Spec.Ctlog.Port, instance.Spec.Ctlog.Prefix),
 	}
-
-	var err error
-	var ctlogUrl string
-	switch {
-	case instance.Spec.Ctlog.Address == "":
-		err = fmt.Errorf("CreateDeployment: %w", CtlogAddressNotSpecified)
-	case instance.Spec.Ctlog.Port == nil:
-		err = fmt.Errorf("CreateDeployment: %w", CtlogPortNotSpecified)
-	case instance.Spec.Ctlog.Prefix == "":
-		err = fmt.Errorf("CreateDeployment: %w", CtlogPrefixNotSpecified)
-	default:
-		ctlogUrl = fmt.Sprintf("%s:%d/%s", instance.Spec.Ctlog.Address, *instance.Spec.Ctlog.Port, instance.Spec.Ctlog.Prefix)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	args = append(args, fmt.Sprintf("--ct-log-url=%s", ctlogUrl))
 
 	env := make([]corev1.EnvVar, 0)
 	if instance.Status.Certificate.PrivateKeyPasswordRef != nil {

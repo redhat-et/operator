@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	k8sTest "github.com/securesign/operator/internal/testing/kubernetes"
 
 	"github.com/securesign/operator/internal/controller/ctlog/utils"
@@ -27,7 +28,6 @@ import (
 	"github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
-	"github.com/securesign/operator/internal/controller/ctlog/actions"
 	fulcio "github.com/securesign/operator/internal/controller/fulcio/actions"
 	trillian "github.com/securesign/operator/internal/controller/trillian/actions"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -125,7 +125,7 @@ var _ = Describe("CTlog update test", func() {
 			deployment := &appsv1.Deployment{}
 			By("Checking if Deployment was successfully created in the reconciliation")
 			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Name: actions.DeploymentName, Namespace: Namespace}, deployment)
+				return k8sClient.Get(ctx, types.NamespacedName{Name: constants2.DeploymentName, Namespace: Namespace}, deployment)
 			}).Should(Succeed())
 
 			By("Move to Ready phase")
@@ -160,22 +160,22 @@ var _ = Describe("CTlog update test", func() {
 			By("CTL deployment is updated")
 			Eventually(func() bool {
 				updated := &appsv1.Deployment{}
-				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: actions.DeploymentName, Namespace: Namespace}, updated)).To(Succeed())
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: constants2.DeploymentName, Namespace: Namespace}, updated)).To(Succeed())
 				return equality.Semantic.DeepDerivative(deployment.Spec.Template.Spec.Volumes, updated.Spec.Template.Spec.Volumes)
 			}).Should(BeFalse())
 
 			By("Move to Ready phase")
 			deployment = &appsv1.Deployment{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: actions.DeploymentName, Namespace: Namespace}, deployment)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: constants2.DeploymentName, Namespace: Namespace}, deployment)).To(Succeed())
 			Expect(k8sTest.SetDeploymentToReady(ctx, k8sClient, deployment)).To(Succeed())
 
 			By("Private key has changed")
 			key, err := utils.CreatePrivateKey()
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(k8sClient.Create(ctx, kubernetes.CreateSecret("key-secret", Namespace,
-				map[string][]byte{"private": key.PrivateKey}, constants.LabelsFor(actions.ComponentName, Name, instance.Name)))).To(Succeed())
+				map[string][]byte{"private": key.PrivateKey}, constants.LabelsFor(constants2.ComponentName, Name, instance.Name)))).To(Succeed())
 
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: actions.DeploymentName, Namespace: Namespace}, deployment)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: constants2.DeploymentName, Namespace: Namespace}, deployment)).To(Succeed())
 			found := &v1alpha1.CTlog{}
 			Eventually(func(g Gomega) error {
 				g.Expect(k8sClient.Get(ctx, typeNamespaceName, found)).Should(Succeed())
@@ -198,7 +198,7 @@ var _ = Describe("CTlog update test", func() {
 			By("CTL deployment is updated")
 			Eventually(func(g Gomega) bool {
 				updated := &appsv1.Deployment{}
-				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: actions.DeploymentName, Namespace: Namespace}, updated)).To(Succeed())
+				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: constants2.DeploymentName, Namespace: Namespace}, updated)).To(Succeed())
 				return equality.Semantic.DeepDerivative(deployment.Spec.Template.Spec.Volumes, updated.Spec.Template.Spec.Volumes)
 			}).Should(BeFalse())
 		})

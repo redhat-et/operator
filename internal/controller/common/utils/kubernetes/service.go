@@ -2,14 +2,14 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func CreateService(namespace string, name string, portName string, port int, targetPort int32, labels map[string]string) *corev1.Service {
@@ -33,21 +33,25 @@ func CreateService(namespace string, name string, portName string, port int, tar
 	}
 }
 
-func GetInternalUrl(ctx context.Context, cli client.Client, namespace, serviceName string) (string, error) {
-	svc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceName,
-			Namespace: namespace,
-		},
-	}
+func FindService(ctx context.Context, c client.Client, namespace string, labels map[string]string) (*corev1.Service, error) {
 
-	err := cli.Get(ctx, types.NamespacedName{
-		Name:      serviceName,
-		Namespace: namespace,
-	}, svc)
+	list := &corev1.ServiceList{}
+
+	err := c.List(ctx, list, client.InNamespace(namespace), client.MatchingLabels(labels))
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, svc.Namespace), nil
+	if len(list.Items) > 1 {
+		return nil, errors.New("duplicate resource")
+	}
+
+	if len(list.Items) == 1 {
+		return &list.Items[0], nil
+	}
+
+	return nil, apierrors.NewNotFound(schema.GroupResource{
+		Group:    list.GetObjectKind().GroupVersionKind().Group,
+		Resource: list.GetObjectKind().GroupVersionKind().Kind,
+	}, "")
 }

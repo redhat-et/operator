@@ -7,7 +7,10 @@ import (
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/action"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
+	k8sutils "github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
+	"github.com/securesign/operator/internal/controller/ctlog/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,17 +41,32 @@ func (i serviceAction) Handle(ctx context.Context, instance *rhtasv1alpha1.CTlog
 		updated bool
 	)
 
-	labels := constants.LabelsFor(ComponentName, ComponentName, instance.Name)
+	labels := constants.LabelsFor(constants2.ComponentName, constants2.ComponentName, instance.Name)
 
-	svc := kubernetes.CreateService(instance.Namespace, ComponentName, ServerPortName, ServerPort, ServerTargetPort, labels)
+	var port int
+	if utils.UseTLS(instance) {
+		port = constants2.HttpsServerPort
+	} else {
+		port = constants2.ServerPort
+	}
+	svc := kubernetes.CreateService(instance.Namespace, constants2.ComponentName, constants2.ServerPortName, port, constants2.ServerTargetPort, labels)
 	if instance.Spec.Monitoring.Enabled {
 		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-			Name:       MetricsPortName,
+			Name:       constants2.MetricsPortName,
 			Protocol:   corev1.ProtocolTCP,
-			Port:       MetricsPort,
-			TargetPort: intstr.FromInt32(MetricsPort),
+			Port:       constants2.MetricsPort,
+			TargetPort: intstr.FromInt32(constants2.MetricsPort),
 		})
 	}
+
+	//TLS: Annotate service
+	if k8sutils.IsOpenShift() && instance.Spec.TLS.CertRef == nil {
+		if svc.Annotations == nil {
+			svc.Annotations = make(map[string]string)
+		}
+		svc.Annotations["service.beta.openshift.io/serving-cert-secret-name"] = instance.Name + "-ctlog-tls"
+	}
+
 	if err = controllerutil.SetControllerReference(instance, svc, i.Client.Scheme()); err != nil {
 		return i.Failed(fmt.Errorf("could not set controller reference for Service: %w", err))
 	}

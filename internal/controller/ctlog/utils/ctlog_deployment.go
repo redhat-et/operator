@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -33,11 +34,16 @@ func CreateDeployment(instance *v1alpha1.CTlog, deploymentName string, sa string
 			Protocol:      corev1.ProtocolTCP,
 		},
 	}
-
+	scheme := corev1.URISchemeHTTP
 	appArgs := []string{
 		"--http_endpoint=0.0.0.0:" + strconv.Itoa(int(serverPort)),
 		"--log_config=/ctfe-keys/config",
 		"--alsologtostderr",
+	}
+	if UseTLS(instance) {
+		scheme = corev1.URISchemeHTTPS
+		appArgs = append(appArgs, "--tls_certificate", "/var/run/secrets/tas/tls.crt")
+		appArgs = append(appArgs, "--tls_key", "/var/run/secrets/tas/tls.key")
 	}
 
 	if instance.Spec.Monitoring.Enabled {
@@ -73,8 +79,9 @@ func CreateDeployment(instance *v1alpha1.CTlog, deploymentName string, sa string
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/healthz",
-										Port: intstr.FromInt32(serverPort),
+										Path:   "/healthz",
+										Port:   intstr.FromInt32(serverPort),
+										Scheme: scheme,
 									},
 								},
 								InitialDelaySeconds: 10,
@@ -86,8 +93,9 @@ func CreateDeployment(instance *v1alpha1.CTlog, deploymentName string, sa string
 							ReadinessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/healthz",
-										Port: intstr.FromInt32(serverPort),
+										Path:   "/healthz",
+										Port:   intstr.FromInt32(serverPort),
+										Scheme: scheme,
 									},
 								},
 								InitialDelaySeconds: 10,
@@ -121,5 +129,10 @@ func CreateDeployment(instance *v1alpha1.CTlog, deploymentName string, sa string
 		},
 	}
 	utils.SetProxyEnvs(dep)
+
+	if err := utils.SetTLS(&dep.Spec.Template, instance.Status.TLS); err != nil {
+		return nil, errors.New("could not set TLS: " + err.Error())
+	}
+
 	return dep, nil
 }

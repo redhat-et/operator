@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	ctl "github.com/securesign/operator/internal/controller/ctlog/constants"
 	"github.com/securesign/operator/test/e2e/support/tas/ctlog"
 	"github.com/securesign/operator/test/e2e/support/tas/fulcio"
 	"github.com/securesign/operator/test/e2e/support/tas/rekor"
@@ -25,7 +26,6 @@ import (
 	tasv1alpha "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/utils"
 	"github.com/securesign/operator/internal/controller/constants"
-	ctl "github.com/securesign/operator/internal/controller/ctlog/actions"
 	fulcioAction "github.com/securesign/operator/internal/controller/fulcio/actions"
 	rekorAction "github.com/securesign/operator/internal/controller/rekor/actions"
 	"github.com/securesign/operator/internal/controller/securesign/actions"

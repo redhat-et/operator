@@ -1,4 +1,4 @@
-package actions
+package constants
 
 import "github.com/securesign/operator/internal/controller/constants"
 
@@ -9,7 +9,8 @@ const (
 	MonitoringRoleName = "prometheus-k8s-ctlog"
 
 	CertCondition    = "FulcioCertAvailable"
-	ServerPortName   = "http"
+	ServerPortName   = "ctlog-server"
+	HttpsServerPort  = 443
 	ServerPort       = 80
 	ServerTargetPort = 6962
 	MetricsPortName  = "metrics"

@@ -21,12 +21,12 @@ import (
 	"maps"
 	"time"
 
+	actions2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	k8sTest "github.com/securesign/operator/internal/testing/kubernetes"
 
 	"github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
-	actions2 "github.com/securesign/operator/internal/controller/ctlog/actions"
 	"github.com/securesign/operator/internal/controller/tuf/actions"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/networking/v1"

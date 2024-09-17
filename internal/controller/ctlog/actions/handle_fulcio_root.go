@@ -8,6 +8,7 @@ import (
 	"github.com/securesign/operator/internal/controller/common/action"
 	k8sutils "github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	"github.com/securesign/operator/internal/controller/fulcio/actions"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -75,7 +76,7 @@ func (g handleFulcioCert) Handle(ctx context.Context, instance *v1alpha1.CTlog) 
 			}
 
 			meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-				Type:    CertCondition,
+				Type:    constants2.CertCondition,
 				Status:  metav1.ConditionFalse,
 				Reason:  constants.Failure,
 				Message: "Cert not found",
@@ -111,7 +112,7 @@ func (g handleFulcioCert) Handle(ctx context.Context, instance *v1alpha1.CTlog) 
 	}
 
 	meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-		Type:   CertCondition,
+		Type:   constants2.CertCondition,
 		Status: metav1.ConditionTrue,
 		Reason: "Resolved",
 	},

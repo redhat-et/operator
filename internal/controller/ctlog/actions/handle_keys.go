@@ -8,6 +8,7 @@ import (
 	"github.com/securesign/operator/internal/controller/common/action"
 	k8sutils "github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	"github.com/securesign/operator/internal/controller/ctlog/utils"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -107,8 +108,8 @@ func (g handleKeys) Handle(ctx context.Context, instance *v1alpha1.CTlog) *actio
 		data = map[string][]byte{"public": config.PublicKey}
 	}
 
-	labels := constants.LabelsFor(ComponentName, DeploymentName, instance.Name)
-	labels[CTLPubLabel] = "public"
+	labels := constants.LabelsFor(constants2.ComponentName, constants2.DeploymentName, instance.Name)
+	labels[constants2.CTLPubLabel] = "public"
 	secret := k8sutils.CreateImmutableSecret(fmt.Sprintf(KeySecretNameFormat, instance.Name), instance.Namespace,
 		data, labels)
 
@@ -117,7 +118,7 @@ func (g handleKeys) Handle(ctx context.Context, instance *v1alpha1.CTlog) *actio
 	}
 
 	// ensure that only new key is exposed
-	if err := g.Client.DeleteAllOf(ctx, &v1.Secret{}, client.InNamespace(instance.Namespace), client.MatchingLabels(constants.LabelsFor(ComponentName, DeploymentName, instance.Name)), client.HasLabels{CTLPubLabel}); err != nil {
+	if err := g.Client.DeleteAllOf(ctx, &v1.Secret{}, client.InNamespace(instance.Namespace), client.MatchingLabels(constants.LabelsFor(constants2.ComponentName, constants2.DeploymentName, instance.Name)), client.HasLabels{constants2.CTLPubLabel}); err != nil {
 		return g.Failed(err)
 	}
 

@@ -152,6 +152,52 @@ spec:
                 - name
                 type: object
                 x-kubernetes-map-type: atomic
+              tls:
+                description: Configuration for enabling TLS (Transport Layer Security)
+                  encryption for CTlog.
+                properties:
+                  certificateRef:
+                    description: Reference to the certificate secret used for TLS
+                      encryption.
+                    properties:
+                      key:
+                        description: The key of the secret to select from. Must be
+                          a valid secret key.
+                        pattern: ^[-._a-zA-Z0-9]+$
+                        type: string
+                      name:
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  privateKeyRef:
+                    description: Reference to the private key secret used for TLS
+                      encryption.
+                    properties:
+                      key:
+                        description: The key of the secret to select from. Must be
+                          a valid secret key.
+                        pattern: ^[-._a-zA-Z0-9]+$
+                        type: string
+                      name:
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
+                x-kubernetes-validations:
+                - message: privateKeyRef cannot be empty
+                  rule: (!has(self.certificateRef) || has(self.privateKeyRef))
               treeID:
                 description: |-
                   The ID of a Trillian tree that stores the log data.
@@ -343,6 +389,52 @@ spec:
                 - name
                 type: object
                 x-kubernetes-map-type: atomic
+              tls:
+                description: TLS (Transport Layer Security) Configuration for enabling
+                  service encryption.
+                properties:
+                  certificateRef:
+                    description: Reference to the certificate secret used for TLS
+                      encryption.
+                    properties:
+                      key:
+                        description: The key of the secret to select from. Must be
+                          a valid secret key.
+                        pattern: ^[-._a-zA-Z0-9]+$
+                        type: string
+                      name:
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  privateKeyRef:
+                    description: Reference to the private key secret used for TLS
+                      encryption.
+                    properties:
+                      key:
+                        description: The key of the secret to select from. Must be
+                          a valid secret key.
+                        pattern: ^[-._a-zA-Z0-9]+$
+                        type: string
+                      name:
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
+                x-kubernetes-validations:
+                - message: privateKeyRef cannot be empty
+                  rule: (!has(self.certificateRef) || has(self.privateKeyRef))
               treeID:
                 description: The ID of a Trillian tree that stores the log data.
                 format: int64

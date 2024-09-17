@@ -297,7 +297,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: registry.redhat.io/rhtas/rhtas-rhel9-operator@sha256:028b6eec7f821b18cf710237a7613ef76d2bacdeff56462368e4e186f26627cc
-    createdAt: "2024-09-11T13:45:32Z"
+    createdAt: "2024-09-16T09:07:25Z"
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"

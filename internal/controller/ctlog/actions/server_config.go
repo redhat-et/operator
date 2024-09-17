@@ -8,6 +8,7 @@ import (
 	"github.com/securesign/operator/internal/controller/common/action"
 	utils "github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	ctlogUtils "github.com/securesign/operator/internal/controller/ctlog/utils"
 	trillian "github.com/securesign/operator/internal/controller/trillian/actions"
 	corev1 "k8s.io/api/core/v1"
@@ -70,7 +71,7 @@ func (i serverConfig) Handle(ctx context.Context, instance *rhtasv1alpha1.CTlog)
 		instance.Spec.Trillian.Address = fmt.Sprintf("%s.%s.svc", trillian.LogserverDeploymentName, instance.Namespace)
 	}
 
-	labels := constants.LabelsFor(ComponentName, DeploymentName, instance.Name)
+	labels := constants.LabelsFor(constants2.ComponentName, constants2.DeploymentName, instance.Name)
 
 	trillianService := instance.DeepCopy().Spec.Trillian
 

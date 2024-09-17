@@ -37,7 +37,6 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Tuf) *
 	)
 
 	labels := constants.LabelsFor(ComponentName, DeploymentName, instance.Name)
-
 	dp := tufutils.CreateTufDeployment(instance, DeploymentName, RBACName, labels)
 
 	if err = controllerutil.SetControllerReference(instance, dp, i.Client.Scheme()); err != nil {

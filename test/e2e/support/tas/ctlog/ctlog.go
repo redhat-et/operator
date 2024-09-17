@@ -3,6 +3,7 @@ package ctlog
 import (
 	"context"
 
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	"github.com/securesign/operator/test/e2e/support"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
-	"github.com/securesign/operator/internal/controller/ctlog/actions"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,7 +25,7 @@ func Verify(ctx context.Context, cli client.Client, namespace string, name strin
 
 	Eventually(func(g Gomega) (bool, error) {
 		return kubernetes.DeploymentIsRunning(ctx, cli, namespace, map[string]string{
-			kubernetes.ComponentLabel: actions.ComponentName,
+			kubernetes.ComponentLabel: constants2.ComponentName,
 		})
 	}).Should(BeTrue())
 }
@@ -33,7 +33,7 @@ func Verify(ctx context.Context, cli client.Client, namespace string, name strin
 func GetServerPod(ctx context.Context, cli client.Client, ns string) func() *v1.Pod {
 	return func() *v1.Pod {
 		list := &v1.PodList{}
-		_ = cli.List(ctx, list, client.InNamespace(ns), client.MatchingLabels{kubernetes.ComponentLabel: actions.ComponentName, kubernetes.NameLabel: "ctlog"})
+		_ = cli.List(ctx, list, client.InNamespace(ns), client.MatchingLabels{kubernetes.ComponentLabel: constants2.ComponentName, kubernetes.NameLabel: "ctlog"})
 		if len(list.Items) != 1 {
 			return nil
 		}

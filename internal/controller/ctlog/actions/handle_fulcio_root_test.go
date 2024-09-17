@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	testAction "github.com/securesign/operator/internal/testing/action"
 
 	. "github.com/onsi/gomega"
@@ -58,7 +59,7 @@ func Test_HandleFulcioCert_Autodiscover(t *testing.T) {
 	g.Expect(i.Status.RootCertificates[0].Key).Should(Equal("key"))
 	g.Expect(i.Status.RootCertificates[0].Name).Should(Equal("secret"))
 
-	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, CertCondition)).To(BeTrue())
+	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, constants2.CertCondition)).To(BeTrue())
 }
 
 func Test_HandleFulcioCert_Empty(t *testing.T) {
@@ -150,7 +151,7 @@ func Test_HandleFulcioCert_Configured(t *testing.T) {
 	g.Expect(i.Status.RootCertificates[1].Key).Should(Equal("key"))
 	g.Expect(i.Status.RootCertificates[1].Name).Should(Equal("secret-2"))
 
-	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, CertCondition)).To(BeTrue())
+	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, constants2.CertCondition)).To(BeTrue())
 }
 
 func Test_HandleFulcioCert_Configured_Priority(t *testing.T) {
@@ -201,7 +202,7 @@ func Test_HandleFulcioCert_Configured_Priority(t *testing.T) {
 	g.Expect(i.Status.RootCertificates[0].Key).Should(Equal("key"))
 	g.Expect(i.Status.RootCertificates[0].Name).Should(Equal("my-secret"))
 
-	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, CertCondition)).To(BeTrue())
+	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, constants2.CertCondition)).To(BeTrue())
 }
 
 func Test_HandleFulcioCert_Delete_ServerConfig(t *testing.T) {
@@ -246,7 +247,7 @@ func Test_HandleFulcioCert_Delete_ServerConfig(t *testing.T) {
 	g.Expect(a.CanHandle(context.TODO(), i)).To(BeTrue())
 
 	_ = a.Handle(context.TODO(), i)
-	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, CertCondition)).To(BeTrue())
+	g.Expect(meta.IsStatusConditionTrue(i.Status.Conditions, constants2.CertCondition)).To(BeTrue())
 
 	g.Expect(i.Status.ServerConfigRef).To(BeNil())
 	g.Expect(c.Get(context.TODO(), types.NamespacedName{Name: "ctlog-config", Namespace: instance.GetNamespace()}, &v1.Secret{})).To(HaveOccurred())

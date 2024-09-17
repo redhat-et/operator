@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	cutils "github.com/securesign/operator/internal/controller/common/utils"
-
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/action"
+	cutils "github.com/securesign/operator/internal/controller/common/utils"
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	"github.com/securesign/operator/internal/controller/ctlog/utils"
 	trillian "github.com/securesign/operator/internal/controller/trillian/actions"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -39,14 +40,33 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.CTlog)
 		err     error
 	)
 
-	labels := constants.LabelsFor(ComponentName, DeploymentName, instance.Name)
+	// TLS
+	switch {
+	case instance.Spec.TLS.CertRef != nil:
+		instance.Status.TLS = instance.Spec.TLS
+	case kubernetes.IsOpenShift():
+		instance.Status.TLS = rhtasv1alpha1.TLS{
+			CertRef: &rhtasv1alpha1.SecretKeySelector{
+				LocalObjectReference: rhtasv1alpha1.LocalObjectReference{Name: instance.Name + "-ctlog-tls"},
+				Key:                  "tls.crt",
+			},
+			PrivateKeyRef: &rhtasv1alpha1.SecretKeySelector{
+				LocalObjectReference: rhtasv1alpha1.LocalObjectReference{Name: instance.Name + "-ctlog-tls"},
+				Key:                  "tls.key",
+			},
+		}
+	default:
+		i.Logger.V(1).Info("Communication to trillian log server is insecure")
+	}
+
+	labels := constants.LabelsFor(constants2.ComponentName, constants2.DeploymentName, instance.Name)
 
 	switch {
 	case instance.Spec.Trillian.Address == "":
 		instance.Spec.Trillian.Address = fmt.Sprintf("%s.%s.svc", trillian.LogserverDeploymentName, instance.Namespace)
 	}
 
-	dp, err := utils.CreateDeployment(instance, DeploymentName, RBACName, labels, ServerTargetPort, MetricsPort)
+	dp, err := utils.CreateDeployment(instance, constants2.DeploymentName, constants2.RBACName, labels, constants2.ServerTargetPort, constants2.MetricsPort)
 	if err != nil {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 			Type:    constants.Ready,

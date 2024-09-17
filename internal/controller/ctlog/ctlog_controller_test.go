@@ -23,7 +23,7 @@ import (
 	"github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
-	"github.com/securesign/operator/internal/controller/ctlog/actions"
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	fulcio "github.com/securesign/operator/internal/controller/fulcio/actions"
 	trillian "github.com/securesign/operator/internal/controller/trillian/actions"
 	k8sTest "github.com/securesign/operator/internal/testing/kubernetes"
@@ -149,13 +149,13 @@ var _ = Describe("CTlog controller", func() {
 			deployment := &appsv1.Deployment{}
 			By("Checking if Deployment was successfully created in the reconciliation")
 			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Name: actions.DeploymentName, Namespace: Namespace}, deployment)
+				return k8sClient.Get(ctx, types.NamespacedName{Name: constants2.DeploymentName, Namespace: Namespace}, deployment)
 			}).Should(Succeed())
 
 			By("Checking if Service was successfully created in the reconciliation")
 			service := &corev1.Service{}
 			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Name: actions.ComponentName, Namespace: Namespace}, service)
+				return k8sClient.Get(ctx, types.NamespacedName{Name: constants2.ComponentName, Namespace: Namespace}, service)
 			}).Should(Succeed())
 			Expect(service.Spec.Ports[0].Port).Should(Equal(int32(80)))
 
@@ -173,14 +173,14 @@ var _ = Describe("CTlog controller", func() {
 			By("Checking if controller will return deployment to desired state")
 			deployment = &appsv1.Deployment{}
 			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Name: actions.DeploymentName, Namespace: Namespace}, deployment)
+				return k8sClient.Get(ctx, types.NamespacedName{Name: constants2.DeploymentName, Namespace: Namespace}, deployment)
 			}).Should(Succeed())
 			replicas := int32(99)
 			deployment.Spec.Replicas = &replicas
 			Expect(k8sClient.Status().Update(ctx, deployment)).Should(Succeed())
 			Eventually(func(g Gomega) int32 {
 				deployment = &appsv1.Deployment{}
-				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: actions.DeploymentName, Namespace: Namespace}, deployment)).Should(Succeed())
+				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: constants2.DeploymentName, Namespace: Namespace}, deployment)).Should(Succeed())
 				return *deployment.Spec.Replicas
 			}).Should(Equal(int32(1)))
 		})

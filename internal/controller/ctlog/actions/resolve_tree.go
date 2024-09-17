@@ -9,6 +9,7 @@ import (
 	"github.com/securesign/operator/internal/controller/common"
 	"github.com/securesign/operator/internal/controller/common/action"
 	"github.com/securesign/operator/internal/controller/constants"
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	"github.com/securesign/operator/internal/controller/ctlog/utils"
 	actions2 "github.com/securesign/operator/internal/controller/trillian/actions"
 	v1 "k8s.io/api/core/v1"
@@ -80,7 +81,7 @@ func (i resolveTreeAction) Handle(ctx context.Context, instance *rhtasv1alpha1.C
 	tree, err = i.createTree(ctx, "ctlog-tree", trillUrl, constants.CreateTreeDeadline)
 	if err != nil {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    ServerCondition,
+			Type:    constants2.ServerCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  constants.Failure,
 			Message: err.Error(),

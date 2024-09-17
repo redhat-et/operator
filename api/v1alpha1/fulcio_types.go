@@ -14,7 +14,7 @@ type FulcioSpec struct {
 	ExternalAccess ExternalAccess `json:"externalAccess,omitempty"`
 	// Ctlog service configuration
 	//+optional
-	//+kubebuilder:default:={port: 80, prefix: trusted-artifact-signer}
+	//+kubebuilder:default:={prefix: trusted-artifact-signer}
 	Ctlog CtlogService `json:"ctlog,omitempty"`
 	// Fulcio Configuration
 	//+required

@@ -2,12 +2,17 @@ package actions
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/action"
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
+	ctlogAction "github.com/securesign/operator/internal/controller/ctlog/constants"
 	futils "github.com/securesign/operator/internal/controller/fulcio/utils"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -36,16 +41,21 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Fulcio
 		err     error
 	)
 
+	instanceCopy := instance.DeepCopy()
+	if err = resolveCtlAddress(ctx, i.Client, instanceCopy); err != nil {
+		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+			Type:    constants.Ready,
+			Status:  metav1.ConditionFalse,
+			Reason:  constants.Creating,
+			Message: "Resolving CTLog address",
+		})
+		i.StatusUpdate(ctx, instance)
+		return i.Requeue()
+	}
+
 	labels := constants.LabelsFor(ComponentName, DeploymentName, instance.Name)
 
-	switch {
-	case instance.Spec.Ctlog.Address == "":
-		instance.Spec.Ctlog.Address = fmt.Sprintf("http://ctlog.%s.svc", instance.Namespace)
-	case instance.Spec.Ctlog.Port == nil:
-		port := int32(80)
-		instance.Spec.Ctlog.Port = &port
-	}
-	dp, err := futils.CreateDeployment(instance, DeploymentName, RBACName, labels)
+	dp, err := futils.CreateDeployment(instanceCopy, DeploymentName, RBACName, labels)
 	if err != nil {
 		if err != nil {
 			meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
@@ -79,4 +89,39 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Fulcio
 	} else {
 		return i.Continue()
 	}
+}
+
+func resolveCtlAddress(ctx context.Context, cli client.Client, instance *rhtasv1alpha1.Fulcio) error {
+	if instance.Spec.Ctlog.Prefix == "" {
+		return futils.CtlogPrefixNotSpecified
+	}
+
+	if instance.Spec.Ctlog.Address != "" {
+		if instance.Spec.Ctlog.Port == nil {
+			return futils.CtlogPortNotSpecified
+		}
+		return nil
+	}
+
+	svc, err := kubernetes.FindService(ctx, cli, instance.Namespace, constants.LabelsForComponent(ctlogAction.ComponentName, instance.Name))
+	if err != nil {
+		return err
+	}
+
+	for _, port := range svc.Spec.Ports {
+		if port.Name == ctlogAction.ServerPortName {
+			var protocol string
+			portCopy := port
+			instance.Spec.Ctlog.Port = &portCopy.Port
+			switch port.Port {
+			case 443:
+				protocol = "https://"
+			case 80:
+				protocol = "http://"
+			}
+			instance.Spec.Ctlog.Address = fmt.Sprintf("%s%s.%s.svc", protocol, svc.Name, svc.Namespace)
+			return nil
+		}
+	}
+	return errors.New("protocol name not found")
 }

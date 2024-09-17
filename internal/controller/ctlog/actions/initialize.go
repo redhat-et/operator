@@ -8,6 +8,7 @@ import (
 	"github.com/securesign/operator/internal/controller/common/action"
 	commonUtils "github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -34,7 +35,7 @@ func (i initializeAction) Handle(ctx context.Context, instance *rhtasv1alpha1.CT
 		ok  bool
 		err error
 	)
-	labels := constants.LabelsForComponent(ComponentName, instance.Name)
+	labels := constants.LabelsForComponent(constants2.ComponentName, instance.Name)
 	ok, err = commonUtils.DeploymentIsRunning(ctx, i.Client, instance.Namespace, labels)
 	switch {
 	case errors.Is(err, commonUtils.ErrDeploymentNotReady):

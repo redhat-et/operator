@@ -9,6 +9,7 @@ import (
 	"github.com/securesign/operator/internal/controller/common/action"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/constants"
+	constants2 "github.com/securesign/operator/internal/controller/ctlog/constants"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,11 +38,11 @@ func (i monitoringAction) Handle(ctx context.Context, instance *rhtasv1alpha1.CT
 		err error
 	)
 
-	monitoringLabels := constants.LabelsFor(ComponentName, MonitoringRoleName, instance.Name)
+	monitoringLabels := constants.LabelsFor(constants2.ComponentName, constants2.MonitoringRoleName, instance.Name)
 
 	role := kubernetes.CreateRole(
 		instance.Namespace,
-		MonitoringRoleName,
+		constants2.MonitoringRoleName,
 		monitoringLabels,
 		[]v1.PolicyRule{
 			{
@@ -68,12 +69,12 @@ func (i monitoringAction) Handle(ctx context.Context, instance *rhtasv1alpha1.CT
 
 	roleBinding := kubernetes.CreateRoleBinding(
 		instance.Namespace,
-		MonitoringRoleName,
+		constants2.MonitoringRoleName,
 		monitoringLabels,
 		v1.RoleRef{
 			APIGroup: v1.SchemeGroupVersion.Group,
 			Kind:     "Role",
-			Name:     MonitoringRoleName,
+			Name:     constants2.MonitoringRoleName,
 		},
 		[]v1.Subject{
 			{Kind: "ServiceAccount", Name: "prometheus-k8s", Namespace: "openshift-monitoring"},
@@ -95,16 +96,16 @@ func (i monitoringAction) Handle(ctx context.Context, instance *rhtasv1alpha1.CT
 
 	serviceMonitor := kubernetes.CreateServiceMonitor(
 		instance.Namespace,
-		DeploymentName,
+		constants2.DeploymentName,
 		monitoringLabels,
 		[]monitoringv1.Endpoint{
 			{
 				Interval: monitoringv1.Duration("30s"),
-				Port:     MetricsPortName,
+				Port:     constants2.MetricsPortName,
 				Scheme:   "http",
 			},
 		},
-		constants.LabelsForComponent(ComponentName, instance.Name),
+		constants.LabelsForComponent(constants2.ComponentName, instance.Name),
 	)
 
 	if err = controllerutil.SetControllerReference(instance, serviceMonitor, i.Client.Scheme()); err != nil {
