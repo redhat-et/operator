@@ -7,11 +7,12 @@ import (
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/action"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure"
 	"github.com/securesign/operator/internal/controller/constants"
 	"github.com/securesign/operator/internal/controller/labels"
 	"golang.org/x/exp/maps"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
+	v2 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,52 +38,34 @@ func (i ingressAction) CanHandle(_ context.Context, instance *rhtasv1alpha1.Fulc
 }
 
 func (i ingressAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Fulcio) *action.Result {
-	var updated bool
+	var (
+		result controllerutil.OperationResult
+		err    error
+	)
 	ok := types.NamespacedName{Name: DeploymentName, Namespace: instance.Namespace}
 	labels := labels.For(ComponentName, DeploymentName, instance.Name)
 
 	svc := &v1.Service{}
 	if err := i.Client.Get(ctx, ok, svc); err != nil {
-		return i.Failed(fmt.Errorf("could not find service for ingress: %w", err))
+		return i.Error(ctx, fmt.Errorf("could not find service for ingress: %w", err), instance)
 	}
 
-	ingress, err := kubernetes.CreateIngress(ctx, i.Client, *svc, instance.Spec.ExternalAccess, ServerPortName, labels)
-	if err != nil {
-		return i.Failed(fmt.Errorf("could not create ingress object: %w", err))
+	if result, err = kubernetes.CreateOrUpdate(ctx, i.Client,
+		&v2.Ingress{
+			ObjectMeta: metav1.ObjectMeta{Name: svc.Name, Namespace: svc.Namespace},
+		},
+		kubernetes.EnsureIngressSpec(ctx, i.Client, *svc, instance.Spec.ExternalAccess, ServerPortName),
+		ensure.Optional(kubernetes.IsOpenShift(), kubernetes.EnsureIngressTLS()),
+		// add route selector labels
+		ensure.Labels[*v2.Ingress](maps.Keys(instance.Spec.ExternalAccess.RouteSelectorLabels), instance.Spec.ExternalAccess.RouteSelectorLabels),
+		// add common labels
+		ensure.Labels[*v2.Ingress](maps.Keys(labels), labels),
+		ensure.ControllerReference[*v2.Ingress](instance, i.Client),
+	); err != nil {
+		return i.Error(ctx, fmt.Errorf("could not create ingress object: %w", err), instance)
 	}
 
-	if err = controllerutil.SetControllerReference(instance, ingress, i.Client.Scheme()); err != nil {
-		return i.Failed(fmt.Errorf("could not set controller reference for Ingress: %w", err))
-	}
-	labelKeys := maps.Keys(instance.Spec.ExternalAccess.RouteSelectorLabels)
-	if updated, err = i.Ensure(ctx, ingress, action.EnsureSpec(), action.EnsureRouteSelectorLabels(labelKeys...)); err != nil {
-		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    constants.Ready,
-			Status:  metav1.ConditionFalse,
-			Reason:  constants.Failure,
-			Message: err.Error(),
-		})
-	}
-
-	if route, err := kubernetes.GetRoute(ctx, i.Client, instance.Namespace, labels); route != nil && err == nil {
-		if !equality.Semantic.DeepEqual(ingress.GetLabels(), route.GetLabels()) {
-			route.SetLabels(ingress.GetLabels())
-			if _, err = i.Ensure(ctx, route, action.EnsureRouteSelectorLabels(labelKeys...)); err != nil {
-				meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-					Type:    constants.Ready,
-					Status:  metav1.ConditionFalse,
-					Reason:  constants.Failure,
-					Message: err.Error(),
-				})
-			}
-			for key, value := range ingress.GetLabels() {
-				labels[key] = value
-			}
-			i.Logger.Info("Updating object", "kind", "Route", "Namespace", route.Namespace, "Name", route.Name)
-		}
-	}
-
-	if updated {
+	if result != controllerutil.OperationResultNone {
 		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{Type: constants.Ready,
 			Status: metav1.ConditionFalse, Reason: constants.Creating, Message: "Ingress created"})
 		return i.StatusUpdate(ctx, instance)
