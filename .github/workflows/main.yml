@@ -28,7 +28,7 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Replace images
-        run: make dev-images && cat internal/controller/constants/images.go
+        run: make dev-images && cat internal/images/images.env
 
       - name: Build operator container
         run: make docker-build docker-push
@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Replace images
-        run: make dev-images && cat internal/controller/constants/images.go
+        run: make dev-images && cat internal/images/images.env
 
       - name: Build operator bundle
         run: make bundle bundle-build bundle-push
@@ -276,7 +276,7 @@ jobs:
         run: go install github.com/sigstore/cosign/v2/cmd/cosign@v2.4.0
 
       - name: Replace images
-        run: make dev-images && cat internal/controller/constants/images.go
+        run: make dev-images && cat internal/images/images.env
 
       - name: Run tests
         run: make test-e2e
@@ -402,7 +402,7 @@ jobs:
         run: go install github.com/sigstore/cosign/v2/cmd/cosign@v2.4.0
 
       - name: Replace images
-        run: make dev-images && cat internal/controller/constants/images.go
+        run: make dev-images && cat internal/images/images.env
 
       - name: Run tests
         env:
@@ -477,7 +477,7 @@ jobs:
           sudo echo "127.0.0.1 fulcio-server.local tuf.local rekor-server.local rekor-search-ui.local cli-server.local" | sudo tee -a /etc/hosts
 
       - name: Replace images
-        run: make dev-images && cat internal/controller/constants/images.go
+        run: make dev-images && cat internal/images/images.env
 
       - name: Run tests
         env:

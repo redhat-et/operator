@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/securesign/operator/internal/images"
+
 	"github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/annotations"
 	"github.com/securesign/operator/internal/controller/common/utils"
@@ -257,7 +259,7 @@ func CreateTimestampAuthorityDeployment(instance *v1alpha1.TimestampAuthority, n
 							Name:         name,
 							VolumeMounts: volumeMounts,
 							Env:          env,
-							Image:        constants.TimestampAuthorityImage,
+							Image:        images.Registry.Get(images.TimestampAuthority),
 							Ports: []core.ContainerPort{
 								{
 									Protocol:      core.ProtocolTCP,

@@ -10,12 +10,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/securesign/operator/internal/images"
+
 	"github.com/blang/semver/v4"
 	"github.com/onsi/ginkgo/v2/dsl/core"
 	v12 "github.com/operator-framework/api/pkg/operators/v1"
 	tasv1alpha "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/utils"
-	"github.com/securesign/operator/internal/controller/constants"
 	ctl "github.com/securesign/operator/internal/controller/ctlog/actions"
 	fulcioAction "github.com/securesign/operator/internal/controller/fulcio/actions"
 	"github.com/securesign/operator/internal/controller/labels"
@@ -298,14 +299,14 @@ var _ = Describe("Operator upgrade", Ordered, func() {
 		gomega.Expect(updated.GT(base)).To(gomega.BeTrue())
 
 		for k, v := range map[string]string{
-			fulcioAction.DeploymentName:            constants.FulcioServerImage,
-			ctl.DeploymentName:                     constants.CTLogImage,
-			tufAction.DeploymentName:               constants.HttpServerImage,
-			rekorAction.ServerDeploymentName:       constants.RekorServerImage,
-			rekorAction.SearchUiDeploymentName:     constants.RekorSearchUiImage,
-			trillianAction.LogsignerDeploymentName: constants.TrillianLogSignerImage,
-			trillianAction.LogserverDeploymentName: constants.TrillianServerImage,
-			tsaAction.DeploymentName:               constants.TimestampAuthorityImage,
+			fulcioAction.DeploymentName:            images.Registry.Get(images.FulcioServer),
+			ctl.DeploymentName:                     images.Registry.Get(images.CTLog),
+			tufAction.DeploymentName:               images.Registry.Get(images.HttpServer),
+			rekorAction.ServerDeploymentName:       images.Registry.Get(images.RekorServer),
+			rekorAction.SearchUiDeploymentName:     images.Registry.Get(images.RekorSearchUi),
+			trillianAction.LogsignerDeploymentName: images.Registry.Get(images.TrillianLogSigner),
+			trillianAction.LogserverDeploymentName: images.Registry.Get(images.TrillianServer),
+			tsaAction.DeploymentName:               images.Registry.Get(images.TimestampAuthority),
 		} {
 			gomega.Eventually(func(g gomega.Gomega) string {
 				d := &v13.Deployment{}

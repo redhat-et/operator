@@ -3,9 +3,10 @@ package trillianUtils
 import (
 	"errors"
 
+	"github.com/securesign/operator/internal/images"
+
 	"github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/utils"
-	"github.com/securesign/operator/internal/controller/constants"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,7 +55,7 @@ func CreateTrillDb(instance *v1alpha1.Trillian, dpName string, sa string, secCon
 					},
 					Args:  args,
 					Name:  dpName,
-					Image: constants.TrillianDbImage,
+					Image: images.Registry.Get(images.TrillianDb),
 					ReadinessProbe: &core.Probe{
 						ProbeHandler: core.ProbeHandler{
 							Exec: &core.ExecAction{

@@ -2,7 +2,7 @@ package utils
 
 import (
 	"github.com/securesign/operator/internal/controller/common/utils"
-	"github.com/securesign/operator/internal/controller/constants"
+	"github.com/securesign/operator/internal/images"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +39,7 @@ func CreateRedisDeployment(namespace string, dpName string, sa string, labels ma
 					Containers: []core.Container{
 						{
 							Name:  dpName,
-							Image: constants.RekorRedisImage,
+							Image: images.Registry.Get(images.RekorRedis),
 							Ports: []core.ContainerPort{
 								{
 									Protocol:      core.ProtocolTCP,

@@ -20,6 +20,8 @@ import (
 	"crypto/tls"
 	"flag"
 
+	"github.com/securesign/operator/internal/images"
+
 	"net/http"
 	"os"
 	"strconv"
@@ -104,22 +106,22 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.Int64Var(&constants.CreateTreeDeadline, "create-tree-deadline", constants.CreateTreeDeadline, "The time allowance (in seconds) for the create tree job to run before failing.")
 	utils.BoolFlagOrEnv(&constants.Openshift, "openshift", "OPENSHIFT", false, "Enable to ensures the operator applies OpenShift specific configurations.")
-	utils.StringFlagOrEnv(&constants.TrillianLogSignerImage, "trillian-log-signer-image", "TRILLIAN_LOG_SIGNER_IMAGE", constants.TrillianLogSignerImage, "The image used for trillian log signer.")
-	utils.StringFlagOrEnv(&constants.TrillianServerImage, "trillian-log-server-image", "TRILLIAN_LOG_SERVER_IMAGE", constants.TrillianServerImage, "The image used for trillian log server.")
-	utils.StringFlagOrEnv(&constants.TrillianDbImage, "trillian-db-image", "TRILLIAN_DB_IMAGE", constants.TrillianDbImage, "The image used for trillian's database.")
-	utils.StringFlagOrEnv(&constants.TrillianNetcatImage, "trillian-netcat-image", "TRILLIAN_NETCAT_IMAGE", constants.TrillianNetcatImage, "The image used for trillian netcat.")
-	utils.StringFlagOrEnv(&constants.FulcioServerImage, "fulcio-server-image", "FULCIO_SERVER_IMAGE", constants.FulcioServerImage, "The image used for the fulcio server.")
-	utils.StringFlagOrEnv(&constants.RekorRedisImage, "rekor-redis-image", "REKOR_REDIS_IMAGE", constants.RekorRedisImage, "The image used for redis.")
-	utils.StringFlagOrEnv(&constants.RekorServerImage, "rekor-server-image", "REKOR_SERVER_IMAGE", constants.RekorServerImage, "The image used for rekor server.")
-	utils.StringFlagOrEnv(&constants.RekorSearchUiImage, "rekor-search-ui-image", "REKOR_SEARCH_UI_IMAGE", constants.RekorSearchUiImage, "The image used for rekor search ui.")
-	utils.StringFlagOrEnv(&constants.BackfillRedisImage, "backfill-redis-image", "BACKFILL_REDIS_IMAGE", constants.BackfillRedisImage, "The image used for backfill redis.")
-	utils.StringFlagOrEnv(&constants.TufImage, "tuf-image", "TUF_IMAGE", constants.TufImage, "The image used for TUF.")
-	utils.StringFlagOrEnv(&constants.CTLogImage, "ctlog-image", "CTLOG_IMAGE", constants.CTLogImage, "The image used for ctlog.")
-	utils.StringFlagOrEnv(&constants.HttpServerImage, "http-server-image", "HTTP_SERVER_IMAGE", constants.HttpServerImage, "The image used to serve our cli binary's.")
-	utils.StringFlagOrEnv(&constants.ClientServerImage, "client-server-image", "CLIENT_SERVER_IMAGE", constants.ClientServerImage, "The image used to serve cosign and gitsign.")
-	utils.StringFlagOrEnv(&constants.SegmentBackupImage, "segment-backup-job-image", "SEGMENT_BACKUP_JOB_IMAGE", constants.SegmentBackupImage, "The image used for the segment backup job")
+	utils.RelatedImageFlag("trillian-log-signer-image", images.TrillianLogSigner, "The image used for trillian log signer.")
+	utils.RelatedImageFlag("trillian-log-server-image", images.TrillianServer, "The image used for trillian log server.")
+	utils.RelatedImageFlag("trillian-db-image", images.TrillianDb, "The image used for trillian's database.")
+	utils.RelatedImageFlag("trillian-netcat-image", images.TrillianNetcat, "The image used for trillian netcat.")
+	utils.RelatedImageFlag("fulcio-server-image", images.FulcioServer, "The image used for the fulcio server.")
+	utils.RelatedImageFlag("rekor-redis-image", images.RekorRedis, "The image used for redis.")
+	utils.RelatedImageFlag("rekor-server-image", images.RekorServer, "The image used for rekor server.")
+	utils.RelatedImageFlag("rekor-search-ui-image", images.RekorSearchUi, "The image used for rekor search ui.")
+	utils.RelatedImageFlag("backfill-redis-image", images.BackfillRedis, "The image used for backfill redis.")
+	utils.RelatedImageFlag("tuf-image", images.Tuf, "The image used for TUF.")
+	utils.RelatedImageFlag("ctlog-image", images.CTLog, "The image used for ctlog.")
+	utils.RelatedImageFlag("http-server-image", images.HttpServer, "The image used to serve our cli binary's.")
+	utils.RelatedImageFlag("client-server-image", images.ClientServer, "The image used to serve cosign and gitsign.")
+	utils.RelatedImageFlag("segment-backup-job-image", images.SegmentBackup, "The image used for the segment backup job")
+	utils.RelatedImageFlag("timestamp-authority-image", images.TimestampAuthority, "The image used for Timestamp Authority")
 	flag.StringVar(&clidownload.CliHostName, "cli-server-hostname", "", "The hostname for the cli server")
-	utils.StringFlagOrEnv(&constants.TimestampAuthorityImage, "timestamp-authority-image", "TIMESTAMP_AUTHORITY_IMAGE", constants.TimestampAuthorityImage, "The image used for Timestamp Authority")
 
 	klog.InitFlags(flag.CommandLine)
 	flag.Parse()

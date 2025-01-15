@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/securesign/operator/internal/images"
+
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/action"
 	"github.com/securesign/operator/internal/controller/common/utils"
@@ -101,7 +103,7 @@ func (i deployAction) createTufDeployment(instance *rhtasv1alpha1.Tuf, sa string
 			template.Spec.Containers = append(template.Spec.Containers, core.Container{Name: tufConstants.ContainerName})
 			container = &template.Spec.Containers[len(template.Spec.Containers)-1]
 		}
-		container.Image = constants.HttpServerImage
+		container.Image = images.Registry.Get(images.HttpServer)
 		container.Ports = []core.ContainerPort{
 			{
 				Protocol:      core.ProtocolTCP,

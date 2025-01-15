@@ -28,14 +28,15 @@ resources:
 - ../prometheus
 
 patches:
-  - path: manager_openshift_patch.yaml
-    target:
-      kind: Deployment
-      name: operator-controller-manager
   - path: manager_metrics_patch.yaml
     target:
       kind: Deployment
       name: operator-controller-manager
+  - path: manager_images_patch.yaml
+    target:
+      kind: Deployment
+      name: operator-controller-manager
+
 # Protect the /metrics endpoint by putting it behind auth.
 # If you want your controller-manager to expose the /metrics
 # endpoint w/o any authn/z, please comment the following line.

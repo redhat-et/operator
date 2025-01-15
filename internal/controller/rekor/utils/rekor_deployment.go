@@ -3,6 +3,8 @@ package utils
 import (
 	"fmt"
 
+	"github.com/securesign/operator/internal/images"
+
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/securesign/operator/api/v1alpha1"
@@ -162,7 +164,7 @@ func CreateRekorDeployment(instance *v1alpha1.Rekor, dpName string, sa string, l
 					Containers: []core.Container{
 						{
 							Name:         dpName,
-							Image:        constants.RekorServerImage,
+							Image:        images.Registry.Get(images.RekorServer),
 							Ports:        containerPorts,
 							Env:          env,
 							Args:         appArgs,

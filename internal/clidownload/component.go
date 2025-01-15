@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/securesign/operator/internal/images"
+
 	"github.com/go-logr/logr"
 	consolev1 "github.com/openshift/api/console/v1"
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
@@ -136,7 +138,7 @@ func (c *Component) createDeployment(namespace string, labels map[string]string)
 					Containers: []core.Container{
 						{
 							Name:            cliServerName,
-							Image:           constants.ClientServerImage,
+							Image:           images.Registry.Get(images.ClientServer),
 							ImagePullPolicy: core.PullAlways,
 							Ports: []core.ContainerPort{
 								{

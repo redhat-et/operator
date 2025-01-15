@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  operator-controller-manager
+spec:
+  template:
+    spec:
+      containers:
+        - name: manager
+          env:
+            - name: RELATED_IMAGE_TRILLIAN_LOG_SIGNER
+              value: "<<RELATED_IMAGE_TRILLIAN_LOG_SIGNER>>"
+            - name: RELATED_IMAGE_TRILLIAN_LOG_SERVER
+              value: "<<RELATED_IMAGE_TRILLIAN_LOG_SERVER>>"
+            - name: RELATED_IMAGE_TRILLIAN_DB
+              value: "<<RELATED_IMAGE_TRILLIAN_DB>>"
+            - name: RELATED_IMAGE_TRILLIAN_NETCAT
+              value: "<<RELATED_IMAGE_TRILLIAN_NETCAT>>"
+            - name: RELATED_IMAGE_FULCIO_SERVER
+              value: "<<RELATED_IMAGE_FULCIO_SERVER>>"
+            - name: RELATED_IMAGE_REKOR_REDIS
+              value: "<<RELATED_IMAGE_REKOR_REDIS>>"
+            - name: RELATED_IMAGE_REKOR_SERVER
+              value: "<<RELATED_IMAGE_REKOR_SERVER>>"
+            - name: RELATED_IMAGE_REKOR_SEARCH_UI
+              value: "<<RELATED_IMAGE_REKOR_SEARCH_UI>>"
+            - name: RELATED_IMAGE_BACKFILL_REDIS
+              value: "<<RELATED_IMAGE_BACKFILL_REDIS>>"
+            - name: RELATED_IMAGE_TUF
+              value: "<<RELATED_IMAGE_TUF>>"
+            - name: RELATED_IMAGE_CTLOG
+              value: "<<RELATED_IMAGE_CTLOG>>"
+            - name: RELATED_IMAGE_HTTP_SERVER
+              value: "<<RELATED_IMAGE_HTTP_SERVER>>"
+            - name: RELATED_IMAGE_SEGMENT_REPORTING
+              value: "<<RELATED_IMAGE_SEGMENT_REPORTING>>"
+            - name: RELATED_IMAGE_TIMESTAMP_AUTHORITY
+              value: "<<RELATED_IMAGE_TIMESTAMP_AUTHORITY>>"
+            - name: RELATED_IMAGE_CLIENT_SERVER
+              value: "<<RELATED_IMAGE_CLIENT_SERVER>>"

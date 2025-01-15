@@ -4,6 +4,8 @@ import (
 	"flag"
 	"os"
 	"strconv"
+
+	"github.com/securesign/operator/internal/images"
 )
 
 // StringFlagOrEnv defines a string flag which can be set by an environment variable.
@@ -14,6 +16,12 @@ func StringFlagOrEnv(p *string, name string, envName string, defaultValue string
 		defaultValue = envValue
 	}
 	flag.StringVar(p, name, defaultValue, usage)
+}
+
+func RelatedImageFlag(name string, image images.Image, usage string) {
+	p := new(string)
+	StringFlagOrEnv(p, name, string(image), images.Registry.Get(image), usage)
+	images.Registry.Setter(image)(*p)
 }
 
 // BoolFlagOrEnv defines a bool flag which can be set by an environment variable.

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/securesign/operator/internal/images"
+
 	"github.com/securesign/operator/internal/controller/common/action"
 	"github.com/securesign/operator/internal/controller/common/utils"
 	"github.com/securesign/operator/internal/controller/constants"
@@ -41,7 +43,7 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Trilli
 	)
 
 	labels := labels.For(actions.LogServerComponentName, actions.LogserverDeploymentName, instance.Name)
-	server, err := trillianUtils.CreateLogServerDeployment(ctx, i.Client, instance, constants.TrillianServerImage, actions.LogserverDeploymentName, actions.RBACName, labels)
+	server, err := trillianUtils.CreateLogServerDeployment(ctx, i.Client, instance, images.Registry.Get(images.TrillianServer), actions.LogserverDeploymentName, actions.RBACName, labels)
 	if err != nil {
 		return i.Failed(err)
 	}

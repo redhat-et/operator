@@ -85,6 +85,11 @@ SHELL = /usr/bin/env bash -o pipefail
 
 OPENSHIFT ?= true
 
+CONFIG_DEFAULT=config/env/kubernetes
+ifeq ($(OPENSHIFT), true)
+CONFIG_DEFAULT=config/env/openshift
+endif
+
 .PHONY: all
 all: build
 
@@ -136,9 +141,9 @@ test-e2e:
 .PHONY: dev-images
 dev-images:
 	@if [ "$(shell uname)" = "Darwin" ]; then \
-		sed -E -i '' -f ci/dev-images.sed internal/controller/constants/images.go; \
+		sed -E -i '' -f ci/dev-images.sed internal/images/images.env; \
 	else \
-		sed -E -i -f ci/dev-images.sed internal/controller/constants/images.go; \
+		sed -E -i -f ci/dev-images.sed internal/images/images.env; \
 	fi
 
 .PHONY: lint
@@ -195,7 +200,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default > dist/install.yaml
+	$(KUSTOMIZE) build ${CONFIG_DEFAULT} | hack/process_manifest.sh internal/images/images.env > dist/install.yaml
 
 ##@ Deployment
 
@@ -214,14 +219,12 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
-	@if [ "$(OPENSHIFT)" == "false" ]; then \
-		$(KUBECTL) patch deploy -n openshift-rhtas-operator -p '{"spec": {"template": {"spec": {"containers": [{"name": "manager","env": [{"name": "OPENSHIFT","value":"false"}]}]}}}}' rhtas-operator-controller-manager; \
-	fi
+	$(KUSTOMIZE) build ${CONFIG_DEFAULT} | hack/process_manifest.sh internal/images/images.env | $(KUBECTL) apply -f -
+
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+	$(KUSTOMIZE) build ${CONFIG_DEFAULT} | hack/process_manifest.sh internal/images/images.env | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Dependencies
 
@@ -298,7 +301,7 @@ endif
 bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+	$(KUSTOMIZE) build config/manifests | hack/process_manifest.sh internal/images/images.env | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 
 .PHONY: bundle-build

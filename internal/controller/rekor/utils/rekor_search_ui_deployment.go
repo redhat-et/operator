@@ -2,7 +2,7 @@ package utils
 
 import (
 	"github.com/securesign/operator/api/v1alpha1"
-	"github.com/securesign/operator/internal/controller/constants"
+	"github.com/securesign/operator/internal/images"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +37,7 @@ func CreateRekorSearchUiDeployment(instance *v1alpha1.Rekor, dpName string, sa s
 									Value: instance.Status.Url,
 								},
 							},
-							Image: constants.RekorSearchUiImage,
+							Image: images.Registry.Get(images.RekorSearchUi),
 							Ports: []core.ContainerPort{
 								{
 									ContainerPort: 3000,
