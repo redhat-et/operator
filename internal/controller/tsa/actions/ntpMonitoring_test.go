@@ -165,22 +165,25 @@ func Test_NTPHandle(t *testing.T) {
 				instance.Status.Conditions[0].Reason = constants.Creating
 				return common.TsaTestSetup(instance, t, nil, NewNtpMonitoringAction(), []client.Object{}...)
 			},
-			testCase: func(g Gomega, a action.Action[*rhtasv1alpha1.TimestampAuthority], client client.WithWatch, instance *rhtasv1alpha1.TimestampAuthority) bool {
+			testCase: func(g Gomega, a action.Action[*rhtasv1alpha1.TimestampAuthority], cli client.WithWatch, instance *rhtasv1alpha1.TimestampAuthority) bool {
 				g.Expect(instance.Status.NTPMonitoring).NotTo(BeNil(), "Status NTP Monitoring Config should not be nil")
 
 				cm := &corev1.ConfigMap{}
-				err := client.Get(context.TODO(), types.NamespacedName{Name: instance.Status.NTPMonitoring.Config.NtpConfigRef.Name, Namespace: instance.GetNamespace()}, cm)
+				err := cli.Get(context.TODO(), types.NamespacedName{Name: instance.Status.NTPMonitoring.Config.NtpConfigRef.Name, Namespace: instance.GetNamespace()}, cm)
 				g.Expect(err).NotTo(HaveOccurred(), "Unable to find config map")
-
 				g.Expect(instance.Status.NTPMonitoring.Config.NtpConfigRef.Name).To(Equal(cm.Name), "Config Map name mismatch")
 
-				instance.Spec.NTPMonitoring.Config.NumServers = 2
-				err = client.Update(context.TODO(), instance)
+				g.Eventually(func(g Gomega) error {
+					g.Expect(cli.Get(context.TODO(), client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+					instance.Spec.NTPMonitoring.Config.NumServers = 2
+					return cli.Update(context.TODO(), instance)
+				}).Should(Succeed())
+
 				g.Expect(err).NotTo(HaveOccurred(), "Error updating instance")
 
 				_ = a.Handle(context.TODO(), instance)
 
-				err = client.Get(context.TODO(), types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, instance)
+				err = cli.Get(context.TODO(), types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, instance)
 				g.Expect(err).NotTo(HaveOccurred(), "Error re-fetching instance")
 
 				g.Expect(instance.Spec.NTPMonitoring.Config.NumServers).To(Equal(2), "NumServers mismatch")
@@ -196,25 +199,27 @@ func Test_NTPHandle(t *testing.T) {
 				instance.Status.Conditions[0].Reason = constants.Creating
 				return common.TsaTestSetup(instance, t, nil, NewNtpMonitoringAction(), []client.Object{}...)
 			},
-			testCase: func(g Gomega, a action.Action[*rhtasv1alpha1.TimestampAuthority], client client.WithWatch, instance *rhtasv1alpha1.TimestampAuthority) bool {
+			testCase: func(g Gomega, a action.Action[*rhtasv1alpha1.TimestampAuthority], cli client.WithWatch, instance *rhtasv1alpha1.TimestampAuthority) bool {
 				g.Expect(instance.Status.NTPMonitoring).NotTo(BeNil(), "Status NTP Monitoring Config should not be nil")
 
 				cm := &corev1.ConfigMap{}
-				err := client.Get(context.TODO(), types.NamespacedName{Name: instance.Status.NTPMonitoring.Config.NtpConfigRef.Name, Namespace: instance.GetNamespace()}, cm)
+				err := cli.Get(context.TODO(), types.NamespacedName{Name: instance.Status.NTPMonitoring.Config.NtpConfigRef.Name, Namespace: instance.GetNamespace()}, cm)
 				g.Expect(err).NotTo(HaveOccurred(), "Unable to find config map")
 
-				oldConfigMapName := instance.Status.NTPMonitoring.Config.NtpConfigRef.Name
+				g.Eventually(func(g Gomega) error {
+					g.Expect(cli.Get(context.TODO(), client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+					instance.Spec.NTPMonitoring.Config.NumServers = 2
+					return cli.Update(context.TODO(), instance)
+				}).Should(Succeed())
 
-				instance.Spec.NTPMonitoring.Config.NumServers = 2
-				err = client.Update(context.TODO(), instance)
-				g.Expect(err).NotTo(HaveOccurred(), "Error updating instance")
+				oldConfigMapName := instance.Status.NTPMonitoring.Config.NtpConfigRef.Name
 
 				_ = a.Handle(context.TODO(), instance)
 
 				newConfigMapName := instance.Status.NTPMonitoring.Config.NtpConfigRef.Name
 				g.Expect(newConfigMapName).NotTo(Equal(oldConfigMapName), "New ConfigMap should have a different name from the old ConfigMap")
 
-				err = client.Get(context.TODO(), types.NamespacedName{Name: oldConfigMapName, Namespace: instance.GetNamespace()}, &corev1.ConfigMap{})
+				err = cli.Get(context.TODO(), types.NamespacedName{Name: oldConfigMapName, Namespace: instance.GetNamespace()}, &corev1.ConfigMap{})
 				g.Expect(errors.IsNotFound(err)).To(BeTrue(), "Old ConfigMap should be deleted")
 
 				g.Expect(meta.FindStatusCondition(instance.Status.Conditions, constants.Ready).Message).To(Equal("NTP monitoring configured"))

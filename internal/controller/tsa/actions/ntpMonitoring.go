@@ -86,14 +86,13 @@ func (i ntpMonitoringAction) Handle(ctx context.Context, instance *rhtasv1alpha1
 
 	ntpConfig, err := i.handleNTPMonitoring(instance)
 	if err != nil {
-		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		return i.Error(ctx, err, instance, metav1.Condition{
 			Type:               constants.Ready,
 			Status:             metav1.ConditionFalse,
 			Reason:             constants.Failure,
 			Message:            err.Error(),
 			ObservedGeneration: instance.Generation,
 		})
-		return i.FailedWithStatusUpdate(ctx, err, instance)
 	}
 
 	l := labels.For(ComponentName, DeploymentName, instance.Name)
@@ -102,7 +101,7 @@ func (i ntpMonitoringAction) Handle(ctx context.Context, instance *rhtasv1alpha1
 	if newStatus.Config.NtpConfigRef != nil {
 		cfg, err := kubernetes.GetConfigMap(ctx, i.Client, instance.Namespace, newStatus.Config.NtpConfigRef.Name)
 		if client.IgnoreNotFound(err) != nil {
-			return i.Failed(fmt.Errorf("NTPConfig: %w", err))
+			return i.Error(ctx, fmt.Errorf("NTPConfig: %w", err), instance)
 		}
 		if cfg != nil {
 			if reflect.DeepEqual(cfg.Data[ntpConfigName], string(ntpConfig)) {
@@ -122,7 +121,7 @@ func (i ntpMonitoringAction) Handle(ctx context.Context, instance *rhtasv1alpha1
 	for _, partialSecret := range partialConfigs.Items {
 		cm, err := kubernetes.GetConfigMap(ctx, i.Client, partialSecret.Namespace, partialSecret.Name)
 		if err != nil {
-			return i.Failed(fmt.Errorf("can't load configMap data %w", err))
+			return i.Error(ctx, fmt.Errorf("can't load configMap data %w", err), instance)
 		}
 		if reflect.DeepEqual(cm.Data[ntpConfigName], string(ntpConfig)) && newStatus.Config.NtpConfigRef == nil {
 			i.Recorder.Eventf(instance, v1.EventTypeNormal, "NTPConfigDiscovered", "Existing ConfigMap with NTP configuration discovered: %s", cm.Name)

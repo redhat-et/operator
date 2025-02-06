@@ -15,15 +15,10 @@ func StatusUpdate() *action.Result {
 	return &action.Result{Result: reconcile.Result{Requeue: false}}
 }
 
-func Failed(err error) *action.Result {
+func Error(err error) *action.Result {
 	return &action.Result{
-		Result: reconcile.Result{RequeueAfter: time.Duration(5) * time.Second},
-		Err:    err,
+		Err: err,
 	}
-}
-
-func FailedWithStatusUpdate(err error) *action.Result {
-	return &action.Result{Result: reconcile.Result{Requeue: false}, Err: err}
 }
 
 func Return() *action.Result {

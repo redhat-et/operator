@@ -56,32 +56,31 @@ func (i resolvePubKeyAction) Handle(ctx context.Context, instance *rhtasv1alpha1
 	// Resolve public key from Rekors API
 	publicKey, err = i.resolvePubKey(*instance)
 	if err != nil {
-		errf := fmt.Errorf("ResolvePubKey: unable to resolve public key: %v", err)
-		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		err := fmt.Errorf("ResolvePubKey: unable to resolve public key: %v", err)
+		return i.Error(ctx, err, instance, metav1.Condition{
 			Type:    actions.ServerCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  constants.Failure,
-			Message: errf.Error(),
+			Message: err.Error(),
 		})
-		return i.FailedWithStatusUpdate(ctx, errf, instance)
 	}
 
 	if partialSecrets, err = k8sutils.ListSecrets(ctx, i.Client, instance.Namespace, RekorPubLabel); err != nil {
-		return i.Failed(fmt.Errorf("ResolvePubKey: find secrets failed: %w", err))
+		return i.Error(ctx, fmt.Errorf("ResolvePubKey: find secrets failed: %w", err), instance)
 	}
 
 	for _, partialSecret := range partialSecrets.Items {
 		sks := &rhtasv1alpha1.SecretKeySelector{Key: partialSecret.Labels[RekorPubLabel], LocalObjectReference: rhtasv1alpha1.LocalObjectReference{Name: partialSecret.Name}}
 		existingPublicKey, err := k8sutils.GetSecretData(i.Client, instance.Namespace, sks)
 		if err != nil {
-			return i.Failed(fmt.Errorf("ResolvePubKey: failed to read `%s` secret's data: %w", sks.Name, err))
+			return i.Error(ctx, fmt.Errorf("ResolvePubKey: failed to read `%s` secret's data: %w", sks.Name, err), instance)
 		}
 		if bytes.Equal(existingPublicKey, publicKey) && instance.Status.PublicKeyRef == nil {
 			instance.Status.PublicKeyRef = sks
 			i.Recorder.Eventf(instance, v1.EventTypeNormal, "PublicKeySecretDiscovered", "Existing public key discovered: %s", sks.Name)
 		} else {
 			if err = labels.Remove(ctx, &partialSecret, i.Client, RekorPubLabel); err != nil {
-				return i.Failed(fmt.Errorf("ResolvePubKey: %w", err))
+				return i.Error(ctx, fmt.Errorf("ResolvePubKey: %w", err), instance)
 			}
 			message := fmt.Sprintf("Removed '%s' label from %s secret", RekorPubLabel, partialSecret.Name)
 			i.Recorder.Event(instance, v1.EventTypeNormal, "PublicKeySecretLabelRemoved", message)

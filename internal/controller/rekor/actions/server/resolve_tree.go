@@ -74,25 +74,19 @@ func (i resolveTreeAction) Handle(ctx context.Context, instance *rhtasv1alpha1.R
 		trillUrl = fmt.Sprintf("%s:%d", instance.Spec.Trillian.Address, *instance.Spec.Trillian.Port)
 	}
 	if err != nil {
-		return i.Failed(err)
+		return i.Error(ctx, err, instance)
 	}
 	i.Logger.V(1).Info("trillian logserver", "address", trillUrl)
 
 	tree, err = i.createTree(ctx, "rekor-tree", trillUrl, constants.CreateTreeDeadline)
 	if err != nil {
-		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		err := fmt.Errorf("could not create trillian tree: %v", err)
+		return i.Error(ctx, err, instance, metav1.Condition{
 			Type:    actions.ServerCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  constants.Failure,
 			Message: err.Error(),
 		})
-		meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    constants.Ready,
-			Status:  metav1.ConditionFalse,
-			Reason:  constants.Failure,
-			Message: err.Error(),
-		})
-		return i.FailedWithStatusUpdate(ctx, fmt.Errorf("could not create trillian tree: %v", err), instance)
 	}
 	i.Recorder.Eventf(instance, v1.EventTypeNormal, "TrillianTreeCreated", "New Trillian tree created: %d", tree.TreeId)
 	instance.Status.TreeID = &tree.TreeId

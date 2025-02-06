@@ -193,7 +193,7 @@ func TestResolveTree_Handle(t *testing.T) {
 				createTree: mockCreateTree(nil, errors.New("timeout error"), nil),
 			},
 			want: want{
-				result: testAction.FailedWithStatusUpdate(fmt.Errorf("could not create trillian tree: timeout error")),
+				result: testAction.Error(fmt.Errorf("could not create trillian tree: timeout error")),
 				verify: func(g Gomega, ctlog *rhtasv1alpha1.CTlog) {
 					g.Expect(ctlog.Spec.TreeID).Should(BeNil())
 					g.Expect(ctlog.Status.TreeID).Should(BeNil())
@@ -236,7 +236,7 @@ func TestResolveTree_Handle(t *testing.T) {
 				},
 			},
 			want: want{
-				result: testAction.Failed(fmt.Errorf("resolve treeID: %v", utils.TrillianPortNotSpecified)),
+				result: testAction.Error(fmt.Errorf("resolve treeID: %v", utils.TrillianPortNotSpecified)),
 			},
 		},
 	}

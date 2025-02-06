@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/securesign/operator/internal/controller/common/action"
 	"github.com/securesign/operator/internal/controller/common/utils"
@@ -33,8 +34,7 @@ func (i statusUrlAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Rek
 	ingress := &v12.Ingress{}
 	err := i.Client.Get(ctx, types.NamespacedName{Name: actions.SearchUiDeploymentName, Namespace: instance.Namespace}, ingress)
 	if err != nil {
-		// condition error
-		return i.FailedWithStatusUpdate(ctx, err, instance)
+		return i.Error(ctx, fmt.Errorf("get ingress error: %w", err), instance)
 	}
 	if len(ingress.Spec.TLS) > 0 {
 		protocol = "https://"

@@ -204,7 +204,7 @@ func TestResolvePubKey_Handle(t *testing.T) {
 		{
 			name: "unable to resolve public key",
 			want: want{
-				result:    testAction.FailedWithStatusUpdate(fmt.Errorf("ResolvePubKey: unable to resolve public key: unexpected http response ")),
+				result:    testAction.Error(fmt.Errorf("ResolvePubKey: unable to resolve public key: unexpected http response ")),
 				publicKey: nil,
 			},
 		},

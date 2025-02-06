@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/constants"
@@ -158,7 +159,7 @@ func TestHandleSecret_Handle(t *testing.T) {
 				},
 			},
 			want: want{
-				result: testAction.FailedWithStatusUpdate(ErrMissingDBConfiguration),
+				result: testAction.Error(reconcile.TerminalError(ErrMissingDBConfiguration)),
 				verify: func(g Gomega, cli client.WithWatch, events <-chan watch.Event) {
 					instance := &rhtasv1alpha1.Trillian{}
 					g.Expect(cli.Get(context.TODO(), namespacedName, instance)).To(Succeed())

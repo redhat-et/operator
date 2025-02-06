@@ -3,7 +3,7 @@ package action
 import (
 	"context"
 	"errors"
-	"strings"
+	"reflect"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -11,13 +11,11 @@ import (
 	"github.com/securesign/operator/internal/controller/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	client2 "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-// OptimisticLockErrorMsg - ignore update error: https://github.com/kubernetes/kubernetes/issues/28149
-const OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
 
 type BaseAction struct {
 	Client   client.Client
@@ -42,23 +40,34 @@ func (action *BaseAction) Continue() *Result {
 }
 
 func (action *BaseAction) StatusUpdate(ctx context.Context, obj client2.Object) *Result {
-	if err := action.Client.Status().Update(ctx, obj); err != nil {
-		if strings.Contains(err.Error(), OptimisticLockErrorMsg) {
-			return &Result{Result: reconcile.Result{RequeueAfter: 1 * time.Second}, Err: nil}
-		}
-		return action.Failed(err)
-	}
-	// Requeue will be caused by update
-	return &Result{Result: reconcile.Result{Requeue: false}}
-}
+	current := obj.DeepCopyObject().(client2.Object)
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var (
+			currentStatus, expectedStatus *reflect.Value
+			e                             error
+		)
 
-// Deprecated: Use Error function
-func (action *BaseAction) Failed(err error) *Result {
-	action.Logger.Error(err, "error during action execution")
-	return &Result{
-		Result: reconcile.Result{RequeueAfter: time.Duration(5) * time.Second},
-		Err:    err,
-	}
+		if e = action.Client.Get(ctx, client.ObjectKeyFromObject(obj), current); e != nil {
+			return e
+		}
+
+		if currentStatus, e = getStatus(current); e != nil {
+			return e
+		}
+
+		if expectedStatus, e = getStatus(obj); e != nil {
+			return e
+		}
+
+		if !reflect.DeepEqual(expectedStatus.Interface(), currentStatus.Interface()) {
+			if !currentStatus.CanSet() {
+				return errors.New("can not set status field")
+			}
+			currentStatus.Set(*expectedStatus)
+		}
+		return action.Client.Status().Update(ctx, current)
+	})
+	return &Result{Err: err}
 }
 
 func (action *BaseAction) Error(ctx context.Context, err error, instance apis.ConditionsAwareObject, conditions ...metav1.Condition) *Result {
@@ -87,18 +96,6 @@ func (action *BaseAction) Error(ctx context.Context, err error, instance apis.Co
 	}
 }
 
-// Deprecated: Use Error function with TerminalError passed as an argument
-func (action *BaseAction) FailedWithStatusUpdate(ctx context.Context, err error, instance client2.Object) *Result {
-	if e := action.Client.Status().Update(ctx, instance); e != nil {
-		if strings.Contains(err.Error(), OptimisticLockErrorMsg) {
-			return &Result{Result: reconcile.Result{RequeueAfter: 1 * time.Second}, Err: err}
-		}
-		err = errors.Join(e, err)
-	}
-	// Requeue will be caused by update
-	return &Result{Result: reconcile.Result{Requeue: false}, Err: err}
-}
-
 func (action *BaseAction) Return() *Result {
 	return &Result{
 		Result: reconcile.Result{Requeue: false},
@@ -112,4 +109,15 @@ func (action *BaseAction) Requeue() *Result {
 		Result: reconcile.Result{RequeueAfter: 5 * time.Second},
 		Err:    nil,
 	}
+}
+
+func getStatus(obj client2.Object) (*reflect.Value, error) {
+	stat := reflect.ValueOf(obj).Elem().FieldByName("Status")
+	if stat == reflect.ValueOf(nil) {
+		return nil, errors.New("status field not found")
+	}
+	if !stat.IsValid() {
+		return nil, errors.New("status field is not valid")
+	}
+	return &stat, nil
 }
