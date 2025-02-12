@@ -74,6 +74,11 @@ func (i rbacAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Trillian
 				Resources: []string{"secrets"},
 				Verbs:     []string{"create", "get", "update"},
 			},
+			rbacv1.PolicyRule{
+				APIGroups: []string{"coordination.k8s.io"},
+				Resources: []string{"leases"},
+				Verbs:     []string{"create", "get", "update", "watch", "patch"},
+			},
 		),
 	); err != nil {
 		return i.Error(ctx, reconcile.TerminalError(fmt.Errorf("could not create Role: %w", err)), instance)
