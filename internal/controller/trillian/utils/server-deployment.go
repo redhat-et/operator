@@ -122,6 +122,22 @@ func EnsureServerDeployment(instance *v1alpha1.Trillian, image string, name stri
 			},
 		}
 
+		podNameEnv := kubernetes.FindEnvByNameOrCreate(container, "POD_NAME")
+		podNameEnv.ValueFrom = &core.EnvVarSource{
+			FieldRef: &core.ObjectFieldSelector{
+				APIVersion: "v1",
+				FieldPath:  "metadata.name",
+			},
+		}
+
+		namespaceEnv := kubernetes.FindEnvByNameOrCreate(container, "NAMESPACE")
+		namespaceEnv.ValueFrom = &core.EnvVarSource{
+			FieldRef: &core.ObjectFieldSelector{
+				APIVersion: "v1",
+				FieldPath:  "metadata.namespace",
+			},
+		}
+
 		port := kubernetes.FindPortByNameOrCreate(container, "8091-tcp")
 		port.ContainerPort = 8091
 		port.Protocol = core.ProtocolTCP

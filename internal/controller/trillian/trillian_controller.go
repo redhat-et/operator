@@ -53,6 +53,7 @@ type TrillianReconciler struct {
 //+kubebuilder:rbac:groups=rhtas.redhat.com,resources=trillians,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rhtas.redhat.com,resources=trillians/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=rhtas.redhat.com,resources=trillians/finalizers,verbs=update
+//+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;watch;create;update;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
