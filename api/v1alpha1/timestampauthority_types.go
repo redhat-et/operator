@@ -208,3 +208,17 @@ type TimestampAuthorityList struct {
 func init() {
 	SchemeBuilder.Register(&TimestampAuthority{}, &TimestampAuthorityList{})
 }
+
+func (i *TimestampAuthority) GetTrustedCA() *LocalObjectReference {
+	if i.Spec.TrustedCA != nil {
+		return i.Spec.TrustedCA
+	}
+
+	if v, ok := i.GetAnnotations()["rhtas.redhat.com/trusted-ca"]; ok {
+		return &LocalObjectReference{
+			Name: v,
+		}
+	}
+
+	return nil
+}

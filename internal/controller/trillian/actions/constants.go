@@ -12,6 +12,9 @@ const (
 	LogSignerComponentName  = "trillian-logsigner"
 	LogSignerMonitoringName = "prometheus-k8s-logsigner"
 
+	LogServerTLSSecret = "%s-trillian-logserver-tls"
+	LogSignerTLSSecret = "%s-trillian-logsigner-tls"
+
 	RBACName = "trillian"
 
 	DbCondition     = "DBAvailable"

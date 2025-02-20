@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure/deployment"
+	"github.com/securesign/operator/internal/controller/rekor/actions"
 	"github.com/securesign/operator/internal/images"
 
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
@@ -70,12 +72,6 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Timest
 
 	labels := labels.For(ComponentName, DeploymentName, instance.Name)
 
-	caRef := ensure.TrustedCAAnnotationToReference(instance.Annotations)
-	// override if spec.trustedCA is defined
-	if instance.Spec.TrustedCA != nil {
-		caRef = instance.Spec.TrustedCA
-	}
-
 	if result, err = kubernetes.CreateOrUpdate(ctx, i.Client,
 		&apps.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -86,8 +82,8 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Timest
 		i.ensureDeployment(instance, RBACName, labels),
 		ensure.ControllerReference[*apps.Deployment](instance, i.Client),
 		ensure.Labels[*apps.Deployment](maps.Keys(labels), labels),
-		ensure.Proxy(),
-		ensure.TrustedCA(caRef),
+		deployment.Proxy(),
+		deployment.TrustedCA(instance.GetTrustedCA(), actions.ServerDeploymentName),
 	); err != nil {
 		return i.Error(ctx, fmt.Errorf("could not create TSA Server: %w", err), instance, metav1.Condition{
 			Type:               TSAServerCondition,

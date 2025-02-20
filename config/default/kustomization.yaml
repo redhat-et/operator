@@ -91,6 +91,17 @@ replacements:
       kind: Deployment
       name: operator-controller-manager
 - source:
+    fieldPath: data.RELATED_IMAGE_TRILLIAN_CREATE_TREE
+    kind: ConfigMap
+    name: related-images
+    version: v1
+  targets:
+    - fieldPaths:
+        - spec.template.spec.containers.[name=^manager$].env.[name=^RELATED_IMAGE_TRILLIAN_CREATE_TREE$].value
+      select:
+        kind: Deployment
+        name: operator-controller-manager
+- source:
     fieldPath: data.RELATED_IMAGE_FULCIO_SERVER
     kind: ConfigMap
     name: related-images

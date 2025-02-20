@@ -5,3 +5,4 @@ s#certificate-transparency#certificate-transparency-go#
 s#tuf-server#scaffold-tuf-server#
 s#client-server#client-server#
 s#segment-reporting#segment-backup-job#
+s#createtree#trillian-createtree#

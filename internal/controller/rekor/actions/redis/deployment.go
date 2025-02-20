@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure/deployment"
 	"github.com/securesign/operator/internal/images"
 
 	"github.com/securesign/operator/internal/controller/common/action"
@@ -59,7 +60,7 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Rekor)
 		i.ensureRedisDeployment(actions.RBACName, labels),
 		ensure.ControllerReference[*v1.Deployment](instance, i.Client),
 		ensure.Labels[*v1.Deployment](maps.Keys(labels), labels),
-		ensure.Proxy(),
+		deployment.Proxy(),
 	); err != nil {
 		return i.Error(ctx, fmt.Errorf("could not create %s deployment: %w", actions.RedisDeploymentName, err), instance,
 			metav1.Condition{

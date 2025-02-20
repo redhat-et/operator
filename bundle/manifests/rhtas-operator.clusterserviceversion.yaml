@@ -297,7 +297,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: registry.redhat.io/rhtas/rhtas-rhel9-operator@sha256:52ba6cd82bc400a08c6f89811e8086126596a873b9b12619de8c5064a2d4faf7
-    createdAt: "2025-01-16T14:07:22Z"
+    createdAt: "2025-02-20T12:46:27Z"
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"
@@ -309,7 +309,7 @@ metadata:
     features.operators.openshift.io/token-auth-azure: "false"
     features.operators.openshift.io/token-auth-gcp: "false"
     operators.openshift.io/valid-subscription: '["Red Hat Trusted Artifact Signer"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.37.0
+    operators.operatorframework.io/builder: operator-sdk-v1.39.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/securesign/secure-sign-operator
     support: Red Hat
@@ -900,6 +900,8 @@ spec:
                   value: registry.redhat.io/rhtas/trillian-database-rhel9@sha256:501612745e63e5504017079388bec191ffacf00ffdebde7be6ca5b8e4fd9d323
                 - name: RELATED_IMAGE_TRILLIAN_NETCAT
                   value: registry.redhat.io/openshift4/ose-tools-rhel8@sha256:486b4d2dd0d10c5ef0212714c94334e04fe8a3d36cf619881986201a50f123c7
+                - name: RELATED_IMAGE_TRILLIAN_CREATE_TREE
+                  value: registry.redhat.io/rhtas/createtree-rhel9@sha256:f66a707e68fb0cdcfcddc318407fe60d72f50a7b605b5db55743eccc14a422ba
                 - name: RELATED_IMAGE_FULCIO_SERVER
                   value: registry.redhat.io/rhtas/fulcio-rhel9@sha256:4b5765bbfd3dac5fa027d2fb3d672b6ebffbc573b9413ab4cb189c50fa6f9a09
                 - name: RELATED_IMAGE_REKOR_REDIS
@@ -1037,6 +1039,8 @@ spec:
     name: trillian-db
   - image: registry.redhat.io/openshift4/ose-tools-rhel8@sha256:486b4d2dd0d10c5ef0212714c94334e04fe8a3d36cf619881986201a50f123c7
     name: trillian-netcat
+  - image: registry.redhat.io/rhtas/createtree-rhel9@sha256:f66a707e68fb0cdcfcddc318407fe60d72f50a7b605b5db55743eccc14a422ba
+    name: trillian-create-tree
   - image: registry.redhat.io/rhtas/fulcio-rhel9@sha256:4b5765bbfd3dac5fa027d2fb3d672b6ebffbc573b9413ab4cb189c50fa6f9a09
     name: fulcio-server
   - image: registry.redhat.io/rhtas/trillian-redis-rhel9@sha256:18820b1fbdbc2cc3e917822974910332d937b03cfe781628bd986fd6a5ee318e

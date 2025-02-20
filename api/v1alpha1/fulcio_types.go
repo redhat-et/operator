@@ -144,3 +144,17 @@ func (i *Fulcio) GetConditions() []metav1.Condition {
 func (i *Fulcio) SetCondition(newCondition metav1.Condition) {
 	meta.SetStatusCondition(&i.Status.Conditions, newCondition)
 }
+
+func (i *Fulcio) GetTrustedCA() *LocalObjectReference {
+	if i.Spec.TrustedCA != nil {
+		return i.Spec.TrustedCA
+	}
+
+	if v, ok := i.GetAnnotations()["rhtas.redhat.com/trusted-ca"]; ok {
+		return &LocalObjectReference{
+			Name: v,
+		}
+	}
+
+	return nil
+}

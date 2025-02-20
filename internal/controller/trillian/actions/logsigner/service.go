@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/securesign/operator/internal/controller/annotations"
 	"github.com/securesign/operator/internal/controller/common/action"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure"
@@ -46,6 +47,11 @@ func (i createServiceAction) Handle(ctx context.Context, instance *rhtasv1alpha1
 
 	labels := labels.For(actions.LogSignerComponentName, actions.LogsignerDeploymentName, instance.Name)
 
+	tlsAnnotations := map[string]string{}
+	if instance.Spec.Db.TLS.CertRef == nil {
+		tlsAnnotations[annotations.TLS] = fmt.Sprintf(actions.LogSignerTLSSecret, instance.Name)
+	}
+
 	ports := []v1.ServicePort{
 		{
 			Name:       actions.ServerPortName,
@@ -70,6 +76,8 @@ func (i createServiceAction) Handle(ctx context.Context, instance *rhtasv1alpha1
 		kubernetes.EnsureServiceSpec(labels, ports...),
 		ensure.ControllerReference[*v1.Service](instance, i.Client),
 		ensure.Labels[*v1.Service](maps.Keys(labels), labels),
+		//TLS: Annotate service
+		ensure.Optional(kubernetes.IsOpenShift(), ensure.Annotations[*v1.Service]([]string{annotations.TLS}, tlsAnnotations)),
 	); err != nil {
 		return i.Error(ctx, fmt.Errorf("could not create service: %w", err), instance)
 	}

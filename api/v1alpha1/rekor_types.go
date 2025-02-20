@@ -39,6 +39,9 @@ type RekorSpec struct {
 	// +patchMergeKey=treeID
 	// +kubebuilder:default:={}
 	Sharding []RekorLogRange `json:"sharding,omitempty"`
+	// ConfigMap with additional bundle of trusted CA
+	//+optional
+	TrustedCA *LocalObjectReference `json:"trustedCA,omitempty"`
 }
 
 type RekorSigner struct {
@@ -163,4 +166,18 @@ func (i *Rekor) GetConditions() []metav1.Condition {
 
 func (i *Rekor) SetCondition(newCondition metav1.Condition) {
 	meta.SetStatusCondition(&i.Status.Conditions, newCondition)
+}
+
+func (i *Rekor) GetTrustedCA() *LocalObjectReference {
+	if i.Spec.TrustedCA != nil {
+		return i.Spec.TrustedCA
+	}
+
+	if v, ok := i.GetAnnotations()["rhtas.redhat.com/trusted-ca"]; ok {
+		return &LocalObjectReference{
+			Name: v,
+		}
+	}
+
+	return nil
 }

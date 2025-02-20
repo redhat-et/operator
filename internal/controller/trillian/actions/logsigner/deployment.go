@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure/deployment"
+	"github.com/securesign/operator/internal/controller/common/utils/tls"
 	"github.com/securesign/operator/internal/images"
 
 	"github.com/securesign/operator/internal/controller/common/action"
@@ -46,11 +48,30 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Trilli
 	)
 
 	labels := labels.For(actions.LogSignerComponentName, actions.LogsignerDeploymentName, instance.Name)
+	insCopy := instance.DeepCopy()
 
-	caTrustRef := ensure.TrustedCAAnnotationToReference(instance.Annotations)
-	// override if spec.trustedCA is defined
-	if instance.Spec.TrustedCA != nil {
-		caTrustRef = instance.Spec.TrustedCA
+	// TLS
+	switch {
+	case insCopy.Spec.TLS.CertRef != nil:
+		insCopy.Status.TLS = insCopy.Spec.TLS
+	case kubernetes.IsOpenShift():
+		insCopy.Status.TLS = rhtasv1alpha1.TLS{
+			CertRef: &rhtasv1alpha1.SecretKeySelector{
+				LocalObjectReference: rhtasv1alpha1.LocalObjectReference{Name: fmt.Sprintf(actions.LogSignerTLSSecret, instance.Name)},
+				Key:                  "tls.crt",
+			},
+			PrivateKeyRef: &rhtasv1alpha1.SecretKeySelector{
+				LocalObjectReference: rhtasv1alpha1.LocalObjectReference{Name: fmt.Sprintf(actions.LogSignerTLSSecret, instance.Name)},
+				Key:                  "tls.key",
+			},
+		}
+	default:
+		i.Logger.V(1).Info("Communication to trillian-db is insecure")
+	}
+
+	caPath, err := tls.CAPath(ctx, i.Client, instance)
+	if err != nil {
+		return i.Error(ctx, fmt.Errorf("failed to get CA path: %w", err), instance)
 	}
 
 	if result, err = kubernetes.CreateOrUpdate(ctx, i.Client,
@@ -61,10 +82,12 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Trilli
 			},
 		},
 		trillianUtils.EnsureServerDeployment(instance, images.Registry.Get(images.TrillianLogSigner), actions.LogsignerDeploymentName, actions.RBACName, labels, "--force_master=true"),
-		ensure.ControllerReference[*apps.Deployment](instance, i.Client),
+		ensure.ControllerReference[*apps.Deployment](insCopy, i.Client),
 		ensure.Labels[*apps.Deployment](maps.Keys(labels), labels),
-		ensure.Proxy(),
-		ensure.TrustedCA(caTrustRef),
+		deployment.Proxy(),
+		deployment.TrustedCA(insCopy.GetTrustedCA(), "wait-for-trillian-db", actions.LogsignerDeploymentName),
+		ensure.Optional(trillianUtils.UseTLSDb(insCopy), trillianUtils.WithTlsDB(insCopy, caPath, actions.LogsignerDeploymentName)),
+		ensure.Optional(insCopy.Status.TLS.CertRef != nil, trillianUtils.EnsureTLSServer(insCopy, actions.LogsignerDeploymentName)),
 	); err != nil {
 		return i.Error(ctx, fmt.Errorf("could not create Trillian LogSigner: %w", err), instance, metav1.Condition{
 			Type:    actions.SignerCondition,

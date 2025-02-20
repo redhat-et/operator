@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure/deployment"
 	"github.com/securesign/operator/internal/images"
 
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
@@ -58,12 +59,6 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Fulcio
 		instance.Spec.Ctlog.Port = &port
 	}
 
-	caRef := instance.Spec.TrustedCA
-	if caRef == nil {
-		// override if spec.trustedCA is not defined
-		caRef = ensure.TrustedCAAnnotationToReference(instance.Annotations)
-	}
-
 	if result, err = kubernetes.CreateOrUpdate(ctx, i.Client,
 		&v1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -74,8 +69,8 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Fulcio
 		i.ensureDeployment(instance, RBACName, labels),
 		ensure.ControllerReference[*v1.Deployment](instance, i.Client),
 		ensure.Labels[*v1.Deployment](maps.Keys(labels), labels),
-		ensure.Proxy(),
-		ensure.TrustedCA(caRef),
+		deployment.Proxy(),
+		deployment.TrustedCA(instance.GetTrustedCA(), "fulcio-server"),
 	); err != nil {
 		return i.Error(ctx, fmt.Errorf("could not create Fulcio: %w", err), instance)
 	}
