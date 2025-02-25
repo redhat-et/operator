@@ -16,6 +16,8 @@ spec:
               value: PLACEHOLDER
             - name: RELATED_IMAGE_TRILLIAN_NETCAT
               value: PLACEHOLDER
+            - name: RELATED_IMAGE_TRILLIAN_CREATE_TREE
+              value: PLACEHOLDER
             - name: RELATED_IMAGE_FULCIO_SERVER
               value: PLACEHOLDER
             - name: RELATED_IMAGE_REKOR_REDIS

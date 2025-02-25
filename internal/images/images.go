@@ -11,10 +11,11 @@ import (
 type Image string
 
 const (
-	TrillianLogSigner Image = "RELATED_IMAGE_TRILLIAN_LOG_SIGNER"
-	TrillianServer    Image = "RELATED_IMAGE_TRILLIAN_LOG_SERVER"
-	TrillianDb        Image = "RELATED_IMAGE_TRILLIAN_DB"
-	TrillianNetcat    Image = "RELATED_IMAGE_TRILLIAN_NETCAT"
+	TrillianLogSigner  Image = "RELATED_IMAGE_TRILLIAN_LOG_SIGNER"
+	TrillianServer     Image = "RELATED_IMAGE_TRILLIAN_LOG_SERVER"
+	TrillianDb         Image = "RELATED_IMAGE_TRILLIAN_DB"
+	TrillianNetcat     Image = "RELATED_IMAGE_TRILLIAN_NETCAT"
+	TrillianCreateTree Image = "RELATED_IMAGE_TRILLIAN_CREATE_TREE"
 
 	FulcioServer Image = "RELATED_IMAGE_FULCIO_SERVER"
 

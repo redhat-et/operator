@@ -710,6 +710,18 @@ spec:
                         minimum: 1
                         type: integer
                     type: object
+                  trustedCA:
+                    description: ConfigMap with additional bundle of trusted CA
+                    properties:
+                      name:
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                    required:
+                    - name
+                    type: object
+                    x-kubernetes-map-type: atomic
                 type: object
               trillian:
                 description: TrillianSpec defines the desired state of Trillian
@@ -866,6 +878,52 @@ spec:
                     required:
                     - enabled
                     type: object
+                  tls:
+                    description: Configuration for enabling TLS (Transport Layer Security)
+                      encryption for manged log-server and log-signer services.
+                    properties:
+                      certificateRef:
+                        description: Reference to the certificate secret used for
+                          TLS encryption.
+                        properties:
+                          key:
+                            description: The key of the secret to select from. Must
+                              be a valid secret key.
+                            pattern: ^[-._a-zA-Z0-9]+$
+                            type: string
+                          name:
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      privateKeyRef:
+                        description: Reference to the private key secret used for
+                          TLS encryption.
+                        properties:
+                          key:
+                            description: The key of the secret to select from. Must
+                              be a valid secret key.
+                            pattern: ^[-._a-zA-Z0-9]+$
+                            type: string
+                          name:
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                        x-kubernetes-map-type: atomic
+                    type: object
+                    x-kubernetes-validations:
+                    - message: privateKeyRef cannot be empty
+                      rule: (!has(self.certificateRef) || has(self.privateKeyRef))
                   trustedCA:
                     description: ConfigMap with additional bundle of trusted CA
                     properties:

@@ -4,15 +4,17 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/securesign/operator/internal/images"
-
 	"github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common/utils"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure/deployment"
+	"github.com/securesign/operator/internal/controller/common/utils/tls"
 	"github.com/securesign/operator/internal/controller/trillian/actions"
+	"github.com/securesign/operator/internal/images"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func EnsureServerDeployment(instance *v1alpha1.Trillian, image string, name string, sa string, labels map[string]string, args ...string) func(deployment *apps.Deployment) error {
@@ -124,14 +126,71 @@ func EnsureServerDeployment(instance *v1alpha1.Trillian, image string, name stri
 		}
 
 		port := kubernetes.FindPortByNameOrCreate(container, "8091-tcp")
-		port.ContainerPort = 8091
+		port.ContainerPort = actions.ServerPort
 		port.Protocol = core.ProtocolTCP
 
 		if instance.Spec.Monitoring.Enabled {
 			monitoring := kubernetes.FindPortByNameOrCreate(container, "monitoring")
-			monitoring.ContainerPort = 8090
+			monitoring.ContainerPort = actions.MetricsPort
 			monitoring.Protocol = core.ProtocolTCP
 		}
+
+		if container.LivenessProbe == nil {
+			container.LivenessProbe = &core.Probe{}
+		}
+		if container.LivenessProbe.HTTPGet == nil {
+			container.LivenessProbe.HTTPGet = &core.HTTPGetAction{}
+		}
+		container.LivenessProbe.HTTPGet.Path = "/healthz"
+		container.LivenessProbe.HTTPGet.Port = intstr.FromInt32(actions.MetricsPort)
+
+		if container.ReadinessProbe == nil {
+			container.ReadinessProbe = &core.Probe{}
+		}
+		if container.ReadinessProbe.HTTPGet == nil {
+			container.ReadinessProbe.HTTPGet = &core.HTTPGetAction{}
+		}
+		container.ReadinessProbe.HTTPGet.Path = "/healthz"
+		container.ReadinessProbe.HTTPGet.Port = intstr.FromInt32(actions.MetricsPort)
+		container.ReadinessProbe.InitialDelaySeconds = 10
+		return nil
+	}
+}
+
+func WithTlsDB(instance *v1alpha1.Trillian, caPath string, name string) func(deployment *apps.Deployment) error {
+	return func(dp *apps.Deployment) error {
+		c := kubernetes.FindContainerByNameOrCreate(&dp.Spec.Template.Spec, name)
+		c.Args = append(c.Args, "--mysql_tls_ca", caPath)
+
+		mysqlServerName := "$(MYSQL_HOSTNAME)." + instance.Namespace + ".svc"
+		if !*instance.Spec.Db.Create {
+			mysqlServerName = "$(MYSQL_HOSTNAME)"
+		}
+		c.Args = append(c.Args, "--mysql_server_name", mysqlServerName)
+		return nil
+	}
+}
+
+func EnsureTLSServer(instance *v1alpha1.Trillian, name string) func(deployment *apps.Deployment) error {
+	return func(dp *apps.Deployment) error {
+		if err := deployment.TLS(instance.Status.TLS, name)(dp); err != nil {
+			return err
+		}
+
+		container := kubernetes.FindContainerByNameOrCreate(&dp.Spec.Template.Spec, name)
+
+		container.Args = append(container.Args, "--tls_cert_file", tls.TLSCertPath)
+
+		if container.ReadinessProbe != nil {
+			container.ReadinessProbe.HTTPGet.Scheme = core.URISchemeHTTPS
+		}
+
+		if container.LivenessProbe != nil {
+			container.LivenessProbe.HTTPGet.Scheme = core.URISchemeHTTPS
+		}
+
+		container.Args = append(container.Args, "--tls_key_file", tls.TLSKeyPath)
+
 		return nil
 	}
 }

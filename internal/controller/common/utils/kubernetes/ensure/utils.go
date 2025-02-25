@@ -2,8 +2,6 @@ package ensure
 
 import (
 	"github.com/operator-framework/operator-lib/proxy"
-	"github.com/securesign/operator/api/v1alpha1"
-	"github.com/securesign/operator/internal/controller/annotations"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes"
 	v1 "k8s.io/api/core/v1"
 )
@@ -18,13 +16,4 @@ func SetProxyEnvs(containers []v1.Container) {
 
 		}
 	}
-}
-
-func TrustedCAAnnotationToReference(anns map[string]string) *v1alpha1.LocalObjectReference {
-	if v, ok := anns[annotations.TrustedCA]; ok {
-		return &v1alpha1.LocalObjectReference{
-			Name: v,
-		}
-	}
-	return nil
 }

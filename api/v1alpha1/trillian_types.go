@@ -29,6 +29,9 @@ type TrillianSpec struct {
 	Db TrillianDB `json:"database,omitempty"`
 	// Enable Monitoring for Logsigner and Logserver
 	Monitoring MonitoringConfig `json:"monitoring,omitempty"`
+	// Configuration for enabling TLS (Transport Layer Security) encryption for manged log-server and log-signer services.
+	//+optional
+	TLS TLS `json:"tls,omitempty"`
 	// ConfigMap with additional bundle of trusted CA
 	//+optional
 	TrustedCA *LocalObjectReference `json:"trustedCA,omitempty"`
@@ -58,6 +61,9 @@ type TrillianDB struct {
 // TrillianStatus defines the observed state of Trillian
 type TrillianStatus struct {
 	Db TrillianDB `json:"database,omitempty"`
+	// Configuration for enabling TLS (Transport Layer Security) encryption for manged log-server and log-signer services.
+	//+optional
+	TLS TLS `json:"tls,omitempty"`
 	// +listType=map
 	// +listMapKey=type
 	// +patchStrategy=merge
@@ -98,4 +104,18 @@ func (i *Trillian) GetConditions() []metav1.Condition {
 
 func (i *Trillian) SetCondition(newCondition metav1.Condition) {
 	meta.SetStatusCondition(&i.Status.Conditions, newCondition)
+}
+
+func (i *Trillian) GetTrustedCA() *LocalObjectReference {
+	if i.Spec.TrustedCA != nil {
+		return i.Spec.TrustedCA
+	}
+
+	if v, ok := i.GetAnnotations()["rhtas.redhat.com/trusted-ca"]; ok {
+		return &LocalObjectReference{
+			Name: v,
+		}
+	}
+
+	return nil
 }

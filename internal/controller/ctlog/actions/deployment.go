@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure/deployment"
+	"github.com/securesign/operator/internal/controller/common/utils/tls"
 	"github.com/securesign/operator/internal/images"
 
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
@@ -70,8 +72,9 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.CTlog)
 		i.ensureDeployment(instance, RBACName, labels),
 		ensure.ControllerReference[*v1.Deployment](instance, i.Client),
 		ensure.Labels[*v1.Deployment](maps.Keys(labels), labels),
-		ensure.Proxy(),
-		ensure.TrustedCA(ensure.TrustedCAAnnotationToReference(instance.Annotations)),
+		deployment.Proxy(),
+		deployment.TrustedCA(instance.GetTrustedCA(), "server"),
+		ensure.Optional(tls.UseTlsClient(instance), i.ensureTlsTrillian(ctx, instance)),
 	); err != nil {
 		return i.Error(ctx, fmt.Errorf("could not create ctlog server deployment: %w", err), instance)
 	}
@@ -169,6 +172,20 @@ func (i deployAction) ensureDeployment(instance *rhtasv1alpha1.CTlog, sa string,
 		container.ReadinessProbe.InitialDelaySeconds = 10
 		container.ReadinessProbe.PeriodSeconds = 10
 
+		return nil
+	}
+}
+
+func (i deployAction) ensureTlsTrillian(ctx context.Context, instance *rhtasv1alpha1.CTlog) func(*v1.Deployment) error {
+	return func(dp *v1.Deployment) error {
+		caPath, err := tls.CAPath(ctx, i.Client, instance)
+		if err != nil {
+			return fmt.Errorf("failed to get CA path: %w", err)
+		}
+
+		container := kubernetes.FindContainerByNameOrCreate(&dp.Spec.Template.Spec, containerName)
+
+		container.Args = append(container.Args, "--trillian_tls_ca_cert_file", caPath)
 		return nil
 	}
 }

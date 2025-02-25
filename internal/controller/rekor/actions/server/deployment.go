@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure/deployment"
+	"github.com/securesign/operator/internal/controller/common/utils/tls"
 	"github.com/securesign/operator/internal/images"
 
 	"github.com/securesign/operator/internal/controller/annotations"
@@ -68,8 +70,9 @@ func (i deployAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Rekor)
 		i.ensureServerDeployment(insCopy, actions.RBACName, labels),
 		ensure.ControllerReference[*v2.Deployment](instance, i.Client),
 		ensure.Labels[*v2.Deployment](maps.Keys(labels), labels),
-		ensure.Proxy(),
-		ensure.TrustedCA(ensure.TrustedCAAnnotationToReference(instance.Annotations)),
+		deployment.Proxy(),
+		deployment.TrustedCA(instance.GetTrustedCA(), actions.ServerDeploymentName),
+		ensure.Optional(tls.UseTlsClient(instance), i.ensureTlsTrillian()),
 	); err != nil {
 		return i.Error(ctx, fmt.Errorf("could create server Deployment: %w", err), instance)
 	}
@@ -231,6 +234,15 @@ func (i deployAction) ensureServerDeployment(instance *rhtasv1alpha1.Rekor, sa s
 		container.ReadinessProbe.HTTPGet.Port = intstr.FromInt32(3000)
 		container.ReadinessProbe.InitialDelaySeconds = 10
 
+		return nil
+	}
+}
+
+func (i deployAction) ensureTlsTrillian() func(*v2.Deployment) error {
+	return func(dp *v2.Deployment) error {
+		container := kubernetes.FindContainerByNameOrCreate(&dp.Spec.Template.Spec, actions.ServerDeploymentName)
+
+		container.Args = append(container.Args, "--trillian_log_server.tls=true")
 		return nil
 	}
 }

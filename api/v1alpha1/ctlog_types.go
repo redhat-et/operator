@@ -101,3 +101,13 @@ func (i *CTlog) GetConditions() []metav1.Condition {
 func (i *CTlog) SetCondition(newCondition metav1.Condition) {
 	meta.SetStatusCondition(&i.Status.Conditions, newCondition)
 }
+
+func (i *CTlog) GetTrustedCA() *LocalObjectReference {
+	if v, ok := i.GetAnnotations()["rhtas.redhat.com/trusted-ca"]; ok {
+		return &LocalObjectReference{
+			Name: v,
+		}
+	}
+
+	return nil
+}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/securesign/operator/internal/controller/annotations"
 	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure"
+	"github.com/securesign/operator/internal/controller/common/utils/kubernetes/ensure/deployment"
 	"github.com/securesign/operator/internal/controller/fulcio/utils"
 	"github.com/securesign/operator/internal/controller/labels"
 	"golang.org/x/exp/maps"
@@ -227,27 +228,18 @@ func createInstance() *v1alpha1.Fulcio {
 
 func createDeployment(instance *v1alpha1.Fulcio, labels map[string]string) (*v13.Deployment, error) {
 	testAction := deployAction{}
-	caRef := instance.Spec.TrustedCA
-	if caRef == nil {
-		// override if spec.trustedCA is not defined
-		caRef = ensure.TrustedCAAnnotationToReference(instance.Annotations)
-	}
 	d := &v13.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      DeploymentName,
 			Namespace: instance.Namespace,
 		},
 	}
-	if caRef == nil {
-		// override if spec.trustedCA is not defined
-		ensure.TrustedCAAnnotationToReference(instance.Annotations)
-	}
 
 	ensures := []func(*v13.Deployment) error{
 		testAction.ensureDeployment(instance, RBACName, labels),
 		ensure.Labels[*v13.Deployment](maps.Keys(labels), labels),
-		ensure.Proxy(),
-		ensure.TrustedCA(caRef),
+		deployment.Proxy(),
+		deployment.TrustedCA(instance.GetTrustedCA(), "fulcio-server"),
 	}
 	for _, en := range ensures {
 		err := en(d)

@@ -63,19 +63,6 @@ make run
 ```
 NOTE: You can also run this in one step by running: make install run
 
-#### Port-forward service(s)
-After installation of your resource(s), you will need to allow the locally running operator to the internal service(s).
-This workaround is needed because the trillian server use insecure RPC protocol for communication with others.
-Currently, it is not possible to route insecure GRPC outside the cluster so the local deployment rely on port-forward.
-
-##### Procedure
-Install your CR and wait until the operator log prints
-```
-Operator is running on localhost. You need to port-forward services.
-Execute `oc port-forward service/trillian-logserver 8091 8091` in your namespace to continue.
-```
-Then execute the command as is written `oc port-forward service/trillian-logserver 8091 8091`
-
 ## EKS deployment
 It is possible to run RHTAS on EKS. If image building and signing all occurs within the cluster Ingress and Certifcates are not required. However, this will make it difficult to verify the image signatures from outside the cluster. It is highly suggested to deploy with Ingress and Certificates in place.
 
