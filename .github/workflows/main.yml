@@ -9,9 +9,9 @@ on:
 
 env:
   GO_VERSION: 1.22
-  IMG: ttl.sh/securesign/secure-sign-operator-${{github.run_number}}:1h
-  BUNDLE_IMG: ttl.sh/securesign/bundle-secure-sign-${{github.run_number}}:1h
-  CATALOG_IMG: ttl.sh/securesign/catalog-${{github.run_number}}:1h
+  IMG: localhost/secure-sign-operator:${{github.run_number}}
+  BUNDLE_IMG: localhost/bundle-secure-sign:${{github.run_number}}
+  CATALOG_IMG: localhost/catalog:${{github.run_number}}
   CONTAINER_TOOL: podman
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
         run: make dev-images && cat internal/images/images.env
 
       - name: Build operator container
-        run: make docker-build docker-push
+        run: make docker-build
 
       - name: Save container image
         run: podman save -o /tmp/operator-oci.tar --format oci-archive $IMG
@@ -54,7 +54,7 @@ jobs:
         run: make dev-images && cat internal/images/images.env
 
       - name: Build operator bundle
-        run: make bundle bundle-build bundle-push
+        run: make bundle bundle-build
 
       - name: Save container image
         run: podman save -o /tmp/bundle-oci.tar --format oci-archive $BUNDLE_IMG
@@ -119,7 +119,6 @@ jobs:
           ${{ env.OPM }} alpha render-template basic v4.14/graph.json > v4.14/catalog/rhtas-operator/catalog.json
           ${{ env.OPM }} validate v4.14/catalog/rhtas-operator
           podman build v4.14 -f v4.14/catalog.Dockerfile -t $CATALOG_IMG
-          podman push $CATALOG_IMG
 
       - name: Save container image
         run: podman save -o /tmp/catalog-oci.tar --format oci-archive $CATALOG_IMG
