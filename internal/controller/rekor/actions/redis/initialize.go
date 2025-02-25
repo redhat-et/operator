@@ -41,7 +41,7 @@ func (i initializeAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Re
 	case errors.Is(err, commonUtils.ErrDeploymentNotReady):
 		i.Logger.Error(err, "deployment is not ready")
 	case err != nil:
-		return i.Failed(err)
+		return i.Error(ctx, err, instance)
 	}
 	if !ok {
 		i.Logger.Info("Waiting for deployment")

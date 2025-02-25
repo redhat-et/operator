@@ -38,7 +38,7 @@ func (i statusUrlAction) Handle(ctx context.Context, instance *rhtasv1alpha1.Tuf
 		ingress := &v12.Ingress{}
 		err := i.Client.Get(ctx, types.NamespacedName{Name: tufConstants.ComponentName, Namespace: instance.Namespace}, ingress)
 		if err != nil {
-			return i.Failed(err)
+			return i.Error(ctx, err, instance)
 		}
 		if len(ingress.Spec.TLS) > 0 {
 			protocol = "https://"

@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierros "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	rhtasv1alpha1 "github.com/securesign/operator/api/v1alpha1"
 	"github.com/securesign/operator/internal/controller/common"
@@ -70,13 +71,12 @@ func (i handleSecretAction) Handle(ctx context.Context, instance *rhtasv1alpha1.
 	// external database
 	if !utils.OptionalBool(instance.Spec.Db.Create) {
 		if instance.Spec.Db.DatabaseSecretRef == nil {
-			meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+			return i.Error(ctx, reconcile.TerminalError(ErrMissingDBConfiguration), instance, metav1.Condition{
 				Type:    trillian.DbCondition,
 				Status:  metav1.ConditionFalse,
 				Reason:  constants.Failure,
 				Message: ErrMissingDBConfiguration.Error(),
 			})
-			return i.FailedWithStatusUpdate(ctx, ErrMissingDBConfiguration, instance)
 		}
 
 		if !equality.Semantic.DeepEqual(instance.Spec.Db.DatabaseSecretRef, instance.Status.Db.DatabaseSecretRef) {
@@ -117,7 +117,7 @@ func (i handleSecretAction) Handle(ctx context.Context, instance *rhtasv1alpha1.
 
 	partialSecrets, err := kubernetes.ListSecrets(ctx, i.Client, instance.Namespace, labels.SelectorFromSet(dbLabels).String())
 	if err != nil {
-		return i.Failed(fmt.Errorf("can't load secrets: %w", err))
+		return i.Error(ctx, fmt.Errorf("can't load secrets: %w", err), instance)
 	}
 
 	for _, partialSecret := range partialSecrets.Items {

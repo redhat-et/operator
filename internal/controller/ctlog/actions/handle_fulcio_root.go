@@ -68,7 +68,7 @@ func (g handleFulcioCert) Handle(ctx context.Context, instance *v1alpha1.CTlog) 
 		scr, err := k8sutils.FindSecret(ctx, g.Client, instance.Namespace, actions.FulcioCALabel)
 		if err != nil {
 			if !k8sErrors.IsNotFound(err) {
-				return g.Failed(err)
+				return g.Error(ctx, err, instance)
 			}
 
 			meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
