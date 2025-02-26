@@ -3,6 +3,7 @@ package support
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	v12 "k8s.io/api/apps/v1"
 	v13 "k8s.io/api/batch/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -151,6 +153,12 @@ func DumpNamespace(ctx context.Context, cli client.Client, ns string) {
 		}
 	}
 
+	// Retrieve logs for all pods (in the namespace)
+	podLogFiles := retrievePodLogs(ctx, cli, ns)
+	for k, v := range podLogFiles {
+		k8s[k] = v
+	}
+
 	// Create the output file
 	fileName := "k8s-dump-" + ns + ".tar.gz"
 	outFile, err := os.Create(fileName)
@@ -161,6 +169,59 @@ func DumpNamespace(ctx context.Context, cli client.Client, ns string) {
 	if err := createArchive(outFile, k8s); err != nil {
 		log.Fatalf("Failed to create %s: %v", fileName, err)
 	}
+}
+
+func retrievePodLogs(ctx context.Context, cli client.Client, ns string) map[string]logTarget {
+	podLogs := make(map[string]logTarget)
+
+	podList := &v1.PodList{}
+	if err := cli.List(ctx, podList, client.InNamespace(ns)); err != nil {
+		log.Printf("failed to list pods in namespace %q: %v", ns, err)
+		return podLogs
+	}
+
+	restCfg, err := config.GetConfig()
+	if err != nil {
+		log.Printf("failed to retrieve REST configuration: %v", err)
+		return podLogs
+	}
+	clientset, err := kubernetes.NewForConfig(restCfg)
+	if err != nil {
+		log.Printf("failed to create Kubernetes clientset: %v", err)
+		return podLogs
+	}
+
+	for _, pod := range podList.Items {
+		podLogOptions := v1.PodLogOptions{}
+		req := clientset.CoreV1().Pods(ns).GetLogs(pod.Name, &podLogOptions)
+
+		stream, err := req.Stream(ctx)
+		if err != nil {
+			// Ensure we close the stream if it is non-nil
+			if stream != nil {
+				_ = stream.Close()
+			}
+			log.Printf("failed to open log stream for pod %q: %v", pod.Name, err)
+			continue
+		}
+
+		logData, err := io.ReadAll(stream)
+		if closeErr := stream.Close(); closeErr != nil {
+			log.Printf("failed to close log stream for pod %q: %v", pod.Name, closeErr)
+		}
+		if err != nil {
+			log.Printf("failed to read log stream for pod %q: %v", pod.Name, err)
+			continue
+		}
+
+		fileKey := "pod-logs/" + pod.Name + ".log"
+		podLogs[fileKey] = logTarget{
+			reader: strings.NewReader(string(logData)),
+			size:   int64(len(logData)),
+		}
+	}
+
+	return podLogs
 }
 
 func dumpK8sObjects(ctx context.Context, cli client.Client, list client.ObjectList, namespace string) (string, error) {
